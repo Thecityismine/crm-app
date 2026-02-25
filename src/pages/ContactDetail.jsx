@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getContact, updateContact, deleteContact } from '@/lib/firebase/contacts'
+import { refreshContacts } from '@/hooks/useContacts'
 import ContactHeader from '@/components/contacts/ContactHeader'
 import ContactTimeline from '@/components/contacts/ContactTimeline'
 import ContactForm from '@/components/contacts/ContactForm'
@@ -40,11 +41,13 @@ export default function ContactDetail() {
   const handleSave = async (data) => {
     await updateContact(id, data)
     setContact((c) => ({ ...c, ...data }))
+    refreshContacts()
   }
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete ${contact.firstName} ${contact.lastName}? This cannot be undone.`)) return
     await deleteContact(id)
+    refreshContacts()
     navigate('/contacts')
   }
 

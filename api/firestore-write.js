@@ -29,7 +29,8 @@ export default async function handler(req, res) {
   if (!operation) return res.status(400).json({ error: 'Missing operation' })
   if (!collection) return res.status(400).json({ error: 'Missing collection' })
 
-  const projectId = process.env.VITE_FIREBASE_PROJECT_ID
+  // trim() removes any accidental trailing newlines that can appear in Vercel env vars
+  const projectId = (process.env.VITE_FIREBASE_PROJECT_ID || '').trim()
   if (!projectId) return res.status(500).json({ error: 'Firebase project not configured' })
 
   const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}`

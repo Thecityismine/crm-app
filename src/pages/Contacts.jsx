@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useContacts } from '@/hooks/useContacts'
+import { useContacts, refreshContacts } from '@/hooks/useContacts'
 import { useSettingsStore } from '@/store/settingsStore'
 import ContactCard from '@/components/contacts/ContactCard'
 import ContactForm from '@/components/contacts/ContactForm'
@@ -26,6 +26,7 @@ export default function Contacts() {
 
   const handleCreate = async (data) => {
     await createContact(data)
+    await refreshContacts()
   }
 
   // Called when user clicks "Review & Save" in the scan modal
