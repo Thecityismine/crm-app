@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { parseCSV, mapCSVRowToContact } from '@/utils/importMapper'
 import { batchImportContacts } from '@/lib/firebase/contacts'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -125,8 +125,11 @@ function ImportSection({ title, description, onImport }) {
 }
 
 function RelationshipOptions() {
-  const { relationshipOptions, addRelationshipOption, removeRelationshipOption } = useSettingsStore()
+  const { relationshipOptions, addRelationshipOption, removeRelationshipOption, syncFromFirestore } = useSettingsStore()
   const [newValue, setNewValue] = useState('')
+
+  // Load from Firestore on mount so custom options are restored after refresh
+  useEffect(() => { syncFromFirestore() }, [])
 
   const handleAdd = () => {
     const trimmed = newValue.trim()
