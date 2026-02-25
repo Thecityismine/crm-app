@@ -8,5 +8,8 @@ dist
 # Nested duplicate folder
 crm-app/
 
-# CSV data exports
-contacts/
+# CSV data exports (root-level only)
+/contacts/
+
+.vercel
+.env*.local
