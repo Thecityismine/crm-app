@@ -16,11 +16,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-// experimentalAutoDetectLongPolling: automatically falls back to HTTP
-// long-polling when the default WebSocket/gRPC channel has issues.
-// Fixes write (addDoc/setDoc) timeouts when reads (onSnapshot) still work.
+// experimentalForceLongPolling: forces HTTP long-polling for all Firestore
+// traffic, bypassing WebSocket/gRPC entirely. Fixes write timeouts in
+// environments where WebSockets are blocked or unreliable.
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,
 })
 export const auth = getAuth(app)
 export const storage = getStorage(app)
