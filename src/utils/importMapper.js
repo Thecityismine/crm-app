@@ -9,6 +9,14 @@ const parseNotionDate = (str) => {
   return isNaN(d.getTime()) ? null : d.toISOString()
 }
 
+// Parse Notion date to YYYY-MM-DD (for birthdate / next birthday)
+const parseNotionDateOnly = (str) => {
+  if (!str) return ''
+  const d = new Date(str)
+  if (isNaN(d.getTime())) return ''
+  return d.toISOString().slice(0, 10)
+}
+
 // Robust CSV parser: handles quoted fields, commas inside quotes, escaped quotes
 export const parseCSV = (text) => {
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
@@ -76,7 +84,8 @@ export const mapCSVRowToContact = (row) => {
     website: (row['Web Site'] || '').trim(),
     university: (row['University'] || '').trim(),
     clientNotes: (row['Client Notes'] || '').trim(),
-    birthdate: (row['Birthdate'] || '').trim(),
+    birthdate: parseNotionDateOnly(row['Birthdate']),
+    nextBirthday: parseNotionDateOnly(row['Next Birthday']),
     nextFollowUp: parseNotionDate(row['Next Follow Up']),
     lastCommunication: parseNotionDate(row['Last Communication']),
     source: 'notion_import',

@@ -93,6 +93,7 @@ export default function ContactDetail() {
               <Field label="Office Phone" value={contact.officePhone} />
               <Field label="Mobile Phone" value={contact.mobilePhone} />
               <Field label="Location" value={contact.location} />
+              <Field label="Birthday" value={contact.birthdate ? new Date(contact.birthdate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null} />
               <Field label="University" value={contact.university} />
             </dl>
           </div>

@@ -9,7 +9,7 @@ const emptyForm = {
   firstName: '', lastName: '', company: '', title: '', relationship: '',
   stage: '', status: '', email: '', mobilePhone: '', officePhone: '',
   location: '', address: '', linkedin: '', website: '', interval: '',
-  nextFollowUp: '', clientNotes: '', university: '',
+  nextFollowUp: '', birthdate: '', clientNotes: '', university: '',
 }
 
 export default function ContactForm({ contact, onClose, onSave }) {
@@ -30,6 +30,7 @@ export default function ContactForm({ contact, onClose, onSave }) {
     website: contact.website || '',
     interval: contact.interval || '',
     nextFollowUp: contact.nextFollowUp ? contact.nextFollowUp.slice(0, 10) : '',
+    birthdate: contact.birthdate ? contact.birthdate.slice(0, 10) : '',
     clientNotes: contact.clientNotes || '',
     university: contact.university || '',
   } : emptyForm)
@@ -132,6 +133,17 @@ export default function ContactForm({ contact, onClose, onSave }) {
           <div>
             <label className="label">Next Follow Up</label>
             <input className="input" type="date" value={form.nextFollowUp} onChange={set('nextFollowUp')} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Birthday</label>
+            <input className="input" type="date" value={form.birthdate} onChange={set('birthdate')} />
+          </div>
+          <div>
+            <label className="label">University</label>
+            <input className="input" value={form.university} onChange={set('university')} />
           </div>
         </div>
 
