@@ -3,8 +3,9 @@ import { useContacts } from '@/hooks/useContacts'
 import { useSettingsStore } from '@/store/settingsStore'
 import ContactCard from '@/components/contacts/ContactCard'
 import ContactForm from '@/components/contacts/ContactForm'
+import ScanContactModal from '@/components/contacts/ScanContactModal'
 import { createContact } from '@/lib/firebase/contacts'
-import { Search, Plus, Users } from 'lucide-react'
+import { Search, Plus, ScanLine, Users } from 'lucide-react'
 
 export default function Contacts() {
   const { contacts, loading } = useContacts()
@@ -12,6 +13,8 @@ export default function Contacts() {
   const [search, setSearch] = useState('')
   const [activeRel, setActiveRel] = useState('All')
   const [showForm, setShowForm] = useState(false)
+  const [showScan, setShowScan] = useState(false)
+  const [scannedContact, setScannedContact] = useState(null)
 
   const filtered = contacts.filter((c) => {
     const matchesRel = activeRel === 'All' || c.relationship === activeRel
@@ -23,6 +26,12 @@ export default function Contacts() {
 
   const handleCreate = async (data) => {
     await createContact(data)
+  }
+
+  // Called when user clicks "Review & Save" in the scan modal
+  const handleScanExtracted = (extractedData) => {
+    setScannedContact(extractedData)
+    setShowForm(true)
   }
 
   if (loading) {
@@ -41,9 +50,21 @@ export default function Contacts() {
           <h1 className="text-2xl font-semibold text-gray-100">Contacts</h1>
           <p className="text-gray-500 text-sm mt-0.5">{contacts.length} total</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={16} /> Add Contact
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowScan(true)}
+            className="btn-secondary flex items-center gap-2"
+            title="Scan contact from image"
+          >
+            <ScanLine size={15} /> Scan
+          </button>
+          <button
+            onClick={() => { setScannedContact(null); setShowForm(true) }}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus size={16} /> Add Contact
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -101,10 +122,19 @@ export default function Contacts() {
         </div>
       )}
 
+      {/* Scan modal */}
+      {showScan && (
+        <ScanContactModal
+          onClose={() => setShowScan(false)}
+          onExtracted={handleScanExtracted}
+        />
+      )}
+
+      {/* Contact form — pre-filled with scanned data if available */}
       {showForm && (
         <ContactForm
-          contact={null}
-          onClose={() => setShowForm(false)}
+          contact={scannedContact}
+          onClose={() => { setShowForm(false); setScannedContact(null) }}
           onSave={handleCreate}
         />
       )}
