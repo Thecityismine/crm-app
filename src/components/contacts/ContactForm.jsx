@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Modal from '@/components/ui/Modal'
+import Avatar, { getLinkedInPhotoUrl } from '@/components/ui/Avatar'
 
 const STAGES = ['Lead', 'Prospect', 'Consultant', 'Active', 'Former Client', 'Other']
 const STATUSES = ['Working', 'Connected', 'Not Connecting', 'Cold']
@@ -9,7 +10,7 @@ const emptyForm = {
   firstName: '', lastName: '', company: '', title: '', relationship: '',
   stage: '', status: '', email: '', mobilePhone: '', officePhone: '',
   location: '', address: '', linkedin: '', website: '', interval: '',
-  nextFollowUp: '', birthdate: '', clientNotes: '', university: '',
+  nextFollowUp: '', birthdate: '', clientNotes: '', university: '', photoUrl: '',
 }
 
 export default function ContactForm({ contact, onClose, onSave }) {
@@ -33,6 +34,7 @@ export default function ContactForm({ contact, onClose, onSave }) {
     birthdate: contact.birthdate ? contact.birthdate.slice(0, 10) : '',
     clientNotes: contact.clientNotes || '',
     university: contact.university || '',
+    photoUrl: contact.photoUrl || '',
   } : emptyForm)
   const [saving, setSaving] = useState(false)
 
@@ -53,9 +55,25 @@ export default function ContactForm({ contact, onClose, onSave }) {
     }
   }
 
+  const photoSrc = form.photoUrl || getLinkedInPhotoUrl(form.linkedin)
+
   return (
     <Modal title={contact ? 'Edit Contact' : 'New Contact'} onClose={onClose} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Photo preview */}
+        <div className="flex items-center gap-4">
+          <Avatar firstName={form.firstName} lastName={form.lastName} size="lg" src={photoSrc} />
+          <div className="flex-1">
+            <label className="label">Photo URL <span className="text-gray-600 font-normal">(optional override)</span></label>
+            <input
+              className="input text-xs"
+              placeholder="Auto-fetched from LinkedIn — paste URL to override"
+              value={form.photoUrl}
+              onChange={set('photoUrl')}
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">First Name *</label>

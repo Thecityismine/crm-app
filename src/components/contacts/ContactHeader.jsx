@@ -1,4 +1,4 @@
-import Avatar from '@/components/ui/Avatar'
+import Avatar, { getLinkedInPhotoUrl } from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import { Mail, Phone, MapPin, Linkedin, Globe, Edit2, Trash2 } from 'lucide-react'
 
@@ -7,7 +7,12 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
     <div className="card p-6 mb-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <Avatar firstName={contact.firstName} lastName={contact.lastName} size="xl" />
+          <Avatar
+            firstName={contact.firstName}
+            lastName={contact.lastName}
+            size="xl"
+            src={contact.photoUrl || getLinkedInPhotoUrl(contact.linkedin)}
+          />
           <div>
             <h1 className="text-2xl font-bold text-gray-100">
               {contact.firstName} {contact.lastName}
