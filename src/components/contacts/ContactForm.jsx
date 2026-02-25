@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Modal from '@/components/ui/Modal'
 import Avatar, { getLinkedInPhotoUrl } from '@/components/ui/Avatar'
 import { useSettingsStore } from '@/store/settingsStore'
+import { AlertCircle } from 'lucide-react'
 
 const INTERVALS = ['30 Days', '60 Days', '90 Days', '6 Months', '1 Year']
 
@@ -35,19 +36,28 @@ export default function ContactForm({ contact, onClose, onSave }) {
     photoUrl: contact.photoUrl || '',
   } : emptyForm)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
+    setSaveError('')
     try {
       const data = {
         ...form,
         nextFollowUp: form.nextFollowUp ? new Date(form.nextFollowUp).toISOString() : null,
       }
-      await onSave(data)
+      // 15-second timeout guard so the button never gets permanently stuck
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Save timed out — check your connection and try again.')), 15000)
+      )
+      await Promise.race([onSave(data), timeout])
       onClose()
+    } catch (err) {
+      console.error('ContactForm save error:', err)
+      setSaveError(err?.message ?? 'Save failed. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -179,6 +189,13 @@ export default function ContactForm({ contact, onClose, onSave }) {
             onChange={set('clientNotes')}
           />
         </div>
+
+        {saveError && (
+          <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <AlertCircle size={15} className="text-red-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-400">{saveError}</p>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
