@@ -1,27 +1,25 @@
 import { useState } from 'react'
 import Modal from '@/components/ui/Modal'
 import Avatar, { getLinkedInPhotoUrl } from '@/components/ui/Avatar'
+import { useSettingsStore } from '@/store/settingsStore'
 
-const STAGES = ['Lead', 'Prospect', 'Consultant', 'Active', 'Former Client', 'Other']
-const STATUSES = ['Working', 'Connected', 'Not Connecting', 'Cold']
 const INTERVALS = ['30 Days', '60 Days', '90 Days', '6 Months', '1 Year']
 
 const emptyForm = {
   firstName: '', lastName: '', company: '', title: '', relationship: '',
-  stage: '', status: '', email: '', mobilePhone: '', officePhone: '',
+  email: '', mobilePhone: '', officePhone: '',
   location: '', address: '', linkedin: '', website: '', interval: '',
   nextFollowUp: '', birthdate: '', clientNotes: '', university: '', photoUrl: '',
 }
 
 export default function ContactForm({ contact, onClose, onSave }) {
+  const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
   const [form, setForm] = useState(contact ? {
     firstName: contact.firstName || '',
     lastName: contact.lastName || '',
     company: contact.company || '',
     title: contact.title || '',
     relationship: contact.relationship || '',
-    stage: contact.stage || '',
-    status: contact.status || '',
     email: contact.email || '',
     mobilePhone: contact.mobilePhone || '',
     officePhone: contact.officePhone || '',
@@ -56,6 +54,12 @@ export default function ContactForm({ contact, onClose, onSave }) {
   }
 
   const photoSrc = form.photoUrl || getLinkedInPhotoUrl(form.linkedin)
+
+  // If the contact's current relationship value isn't in the list, append it so it
+  // still shows correctly in the dropdown while editing.
+  const relationshipList = (contact?.relationship && !relationshipOptions.includes(contact.relationship))
+    ? [...relationshipOptions, contact.relationship]
+    : relationshipOptions
 
   return (
     <Modal title={contact ? 'Edit Contact' : 'New Contact'} onClose={onClose} size="lg">
@@ -98,25 +102,11 @@ export default function ContactForm({ contact, onClose, onSave }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Stage</label>
-            <select className="input" value={form.stage} onChange={set('stage')}>
-              <option value="">Select stage...</option>
-              {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="label">Status</label>
-            <select className="input" value={form.status} onChange={set('status')}>
-              <option value="">Select status...</option>
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
             <label className="label">Relationship</label>
-            <input className="input" value={form.relationship} onChange={set('relationship')} placeholder="e.g. Broker, Tenant..." />
+            <select className="input" value={form.relationship} onChange={set('relationship')}>
+              <option value="">Select relationship...</option>
+              {relationshipList.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Follow-up Interval</label>

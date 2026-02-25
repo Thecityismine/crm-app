@@ -86,15 +86,15 @@ export default function Dashboard() {
           <p className="text-2xl font-bold text-gray-100">{loading ? '—' : upcoming.length}</p>
         </div>
         <div className="card p-4">
-          <p className="text-xs text-gray-500 mb-1">Active</p>
+          <p className="text-xs text-gray-500 mb-1">Overdue Follow-ups</p>
           <p className="text-2xl font-bold text-gray-100">
-            {loading ? '—' : contacts.filter((c) => c.stage === 'Active').length}
+            {loading ? '—' : contacts.filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) < new Date()).length}
           </p>
         </div>
         <div className="card p-4">
-          <p className="text-xs text-gray-500 mb-1">Leads</p>
+          <p className="text-xs text-gray-500 mb-1">Follow-ups Scheduled</p>
           <p className="text-2xl font-bold text-gray-100">
-            {loading ? '—' : contacts.filter((c) => c.stage === 'Lead').length}
+            {loading ? '—' : contacts.filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) >= new Date()).length}
           </p>
         </div>
       </div>

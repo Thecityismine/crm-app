@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
 import { parseCSV, mapCSVRowToContact } from '@/utils/importMapper'
 import { batchImportContacts } from '@/lib/firebase/contacts'
-import { Upload, CheckCircle, AlertCircle, FileText } from 'lucide-react'
+import { useSettingsStore } from '@/store/settingsStore'
+import { Upload, CheckCircle, AlertCircle, FileText, Plus, X } from 'lucide-react'
 
 function ImportSection({ title, description, onImport }) {
   const inputRef = useRef()
@@ -123,6 +124,69 @@ function ImportSection({ title, description, onImport }) {
   )
 }
 
+function RelationshipOptions() {
+  const { relationshipOptions, addRelationshipOption, removeRelationshipOption } = useSettingsStore()
+  const [newValue, setNewValue] = useState('')
+
+  const handleAdd = () => {
+    const trimmed = newValue.trim()
+    if (!trimmed || relationshipOptions.includes(trimmed)) return
+    addRelationshipOption(trimmed)
+    setNewValue('')
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleAdd() }
+  }
+
+  return (
+    <div className="card p-5">
+      <h3 className="font-medium text-gray-200 mb-1">Relationship Types</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Customize the options available in the Relationship dropdown on contact forms.
+      </p>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {relationshipOptions.map((option) => (
+          <span
+            key={option}
+            className="flex items-center gap-1.5 px-3 py-1 bg-gray-800 border border-gray-700 rounded-full text-sm text-gray-300"
+          >
+            {option}
+            <button
+              onClick={() => removeRelationshipOption(option)}
+              className="text-gray-600 hover:text-red-400 transition-colors"
+              aria-label={`Remove ${option}`}
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+        {relationshipOptions.length === 0 && (
+          <p className="text-sm text-gray-600">No options yet — add one below.</p>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          className="input flex-1"
+          placeholder="e.g. Broker, Investor, Mentor..."
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <button
+          onClick={handleAdd}
+          disabled={!newValue.trim()}
+          className="btn-primary flex items-center gap-1.5 disabled:opacity-40"
+        >
+          <Plus size={14} /> Add
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Settings() {
   const handleImportContacts = async (rows) => {
     const contacts = rows.map(mapCSVRowToContact).filter((c) => c.firstName || c.lastName)
@@ -136,12 +200,19 @@ export default function Settings() {
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+          Contacts
+        </h2>
+        <RelationshipOptions />
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
           Import Data
         </h2>
         <div className="space-y-4">
           <ImportSection
             title="Import Contacts"
-            description='Upload the "Client Contacts" CSV exported from Notion. All fields including stage, relationship, follow-up dates, and notes will be imported.'
+            description='Upload the "Client Contacts" CSV exported from Notion. All fields including relationship, follow-up dates, and notes will be imported.'
             onImport={handleImportContacts}
           />
         </div>

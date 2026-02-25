@@ -1,24 +1,24 @@
 import { useState } from 'react'
 import { useContacts } from '@/hooks/useContacts'
+import { useSettingsStore } from '@/store/settingsStore'
 import ContactCard from '@/components/contacts/ContactCard'
 import ContactForm from '@/components/contacts/ContactForm'
 import { createContact } from '@/lib/firebase/contacts'
 import { Search, Plus, Users } from 'lucide-react'
 
-const STAGES = ['All', 'Lead', 'Prospect', 'Consultant', 'Active', 'Former Client']
-
 export default function Contacts() {
   const { contacts, loading } = useContacts()
+  const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
   const [search, setSearch] = useState('')
-  const [activeStage, setActiveStage] = useState('All')
+  const [activeRel, setActiveRel] = useState('All')
   const [showForm, setShowForm] = useState(false)
 
   const filtered = contacts.filter((c) => {
-    const matchesStage = activeStage === 'All' || c.stage === activeStage
+    const matchesRel = activeRel === 'All' || c.relationship === activeRel
     const q = search.toLowerCase()
-    const matchesSearch = !q || [c.firstName, c.lastName, c.company, c.email, c.location]
+    const matchesSearch = !q || [c.firstName, c.lastName, c.company, c.email, c.location, c.relationship]
       .some((v) => v?.toLowerCase().includes(q))
-    return matchesStage && matchesSearch
+    return matchesRel && matchesSearch
   })
 
   const handleCreate = async (data) => {
@@ -51,29 +51,29 @@ export default function Contacts() {
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input
           className="input pl-8"
-          placeholder="Search by name, company, email..."
+          placeholder="Search by name, company, email, relationship..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* Stage filter tabs */}
+      {/* Relationship filter tabs */}
       <div className="flex gap-1 mb-5 overflow-x-auto pb-1">
-        {STAGES.map((stage) => {
-          const count = stage === 'All'
+        {['All', ...relationshipOptions].map((rel) => {
+          const count = rel === 'All'
             ? contacts.length
-            : contacts.filter((c) => c.stage === stage).length
+            : contacts.filter((c) => c.relationship === rel).length
           return (
             <button
-              key={stage}
-              onClick={() => setActiveStage(stage)}
+              key={rel}
+              onClick={() => setActiveRel(rel)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                activeStage === stage
+                activeRel === rel
                   ? 'bg-gray-700 text-gray-100'
                   : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
               }`}
             >
-              {stage} {count > 0 && <span className="ml-1 text-gray-500">{count}</span>}
+              {rel} {count > 0 && <span className="ml-1 text-gray-500">{count}</span>}
             </button>
           )
         })}
@@ -90,9 +90,9 @@ export default function Contacts() {
         <div className="flex flex-col items-center justify-center h-64 text-center">
           <Users size={36} className="text-gray-700 mb-3" />
           <p className="text-gray-400 font-medium">
-            {search || activeStage !== 'All' ? 'No contacts match your filter' : 'No contacts yet'}
+            {search || activeRel !== 'All' ? 'No contacts match your filter' : 'No contacts yet'}
           </p>
-          {!search && activeStage === 'All' && (
+          {!search && activeRel === 'All' && (
             <p className="text-gray-600 text-sm mt-1">
               Add one manually or import from CSV in{' '}
               <a href="/settings" className="text-brand-500 hover:underline">Settings</a>

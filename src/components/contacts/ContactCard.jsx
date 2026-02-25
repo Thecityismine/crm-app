@@ -37,7 +37,7 @@ export default function ContactCard({ contact }) {
             <div className="text-xs text-gray-500 truncate">{contact.company}</div>
           )}
         </div>
-        {contact.stage && <Badge label={contact.stage} />}
+        {contact.relationship && <Badge label={contact.relationship} />}
       </div>
 
       <div className="space-y-1.5">

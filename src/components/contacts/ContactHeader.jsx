@@ -24,11 +24,7 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
               <p className="text-gray-500 text-sm mt-0.5">{contact.company}</p>
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {contact.stage && <Badge label={contact.stage} />}
-              {contact.status && <Badge label={contact.status} />}
-              {contact.relationship && (
-                <span className="text-xs text-gray-500">{contact.relationship}</span>
-              )}
+              {contact.relationship && <Badge label={contact.relationship} />}
             </div>
           </div>
         </div>
