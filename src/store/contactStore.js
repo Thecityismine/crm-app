@@ -4,7 +4,8 @@ export const useContactStore = create((set) => ({
   contacts: [],
   selectedContact: null,
   loading: false,
-  setContacts: (contacts) => set({ contacts }),
+  initialized: false,
+  setContacts: (contacts) => set({ contacts, initialized: true }),
   setSelectedContact: (contact) => set({ selectedContact: contact }),
   addContact: (contact) => set((s) => ({ contacts: [contact, ...s.contacts] })),
   updateContact: (id, data) => set((s) => ({

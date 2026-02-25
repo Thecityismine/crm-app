@@ -2,17 +2,26 @@ import { useEffect } from 'react'
 import { useContactStore } from '@/store/contactStore'
 import { subscribeToContacts, createContact, updateContact, deleteContact } from '@/lib/firebase/contacts'
 
+// Module-level singleton — only one Firestore listener for the entire app session.
+// Prevents re-fetching all contacts every time the Contacts page is visited.
+let _unsub = null
+
 export const useContacts = () => {
-  const { contacts, loading, setContacts, setLoading, addContact, updateContact: update, removeContact } = useContactStore()
+  const { contacts, loading, initialized, setContacts, setLoading } = useContactStore()
 
   useEffect(() => {
+    // Already subscribed — contacts are in the store, nothing to do.
+    if (_unsub) return
+
     setLoading(true)
-    const unsub = subscribeToContacts((data) => {
+    _unsub = subscribeToContacts((data) => {
       setContacts(data)
       setLoading(false)
     })
-    return unsub
+
+    // Intentionally not returning _unsub — keep the listener alive across
+    // page navigations so contacts are instant on re-visit.
   }, [])
 
-  return { contacts, loading, createContact, updateContact, deleteContact }
+  return { contacts, loading, initialized, createContact, updateContact, deleteContact }
 }
