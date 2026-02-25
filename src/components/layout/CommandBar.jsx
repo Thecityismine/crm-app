@@ -28,24 +28,24 @@ export default function CommandBar() {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-24">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
-          <Search size={16} className="text-gray-400" />
+      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-800">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800">
+          <Search size={16} className="text-gray-500" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search or ask AI anything..."
-            className="flex-1 outline-none text-sm"
+            className="flex-1 outline-none text-sm bg-transparent text-gray-100 placeholder-gray-500"
           />
-          <button onClick={closeCommandBar}><X size={16} className="text-gray-400" /></button>
+          <button onClick={closeCommandBar}><X size={16} className="text-gray-500" /></button>
         </div>
         <div className="py-2 max-h-72 overflow-y-auto">
           {filtered.map((cmd) => (
             <button
               key={cmd.action}
               onClick={() => { navigate(cmd.action); closeCommandBar() }}
-              className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2"
             >
               {cmd.label}
             </button>

@@ -21,9 +21,9 @@ export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
   if (!sidebarOpen) return null
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
-      <div className="h-14 flex items-center px-4 border-b border-gray-200">
-        <span className="font-bold text-brand-700 text-lg tracking-tight">CRM</span>
+    <aside className="w-56 bg-gray-900 border-r border-gray-800 flex flex-col">
+      <div className="h-14 flex items-center px-4 border-b border-gray-800">
+        <span className="font-bold text-white text-lg tracking-tight">CRM</span>
       </div>
       <nav className="flex-1 p-3 space-y-0.5">
         {links.map(({ to, icon: Icon, label }) => (
@@ -40,7 +40,7 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="p-3 border-t border-gray-200">
+      <div className="p-3 border-t border-gray-800">
         <NavLink to="/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <Settings size={16} />
           Settings

@@ -28,10 +28,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="bg-gray-900 rounded-2xl shadow-sm border border-gray-800 p-8 w-full max-w-sm">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">CRM</h1>
+          <h1 className="text-2xl font-bold text-white">CRM</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to your workspace</p>
         </div>
 
@@ -51,7 +51,7 @@ export default function Login() {
 
         <div className="relative mb-4">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
-          <div className="relative flex justify-center text-xs text-gray-400 bg-white px-2">or</div>
+          <div className="relative flex justify-center text-xs text-gray-500 bg-gray-900 px-2">or</div>
         </div>
 
         <button onClick={handleGoogle} className="btn-secondary w-full flex items-center justify-center gap-2">

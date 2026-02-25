@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/uiStore'
 export default function AppShell() {
   const { sidebarOpen, commandBarOpen } = useUIStore()
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-black overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar />
