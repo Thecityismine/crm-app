@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useContacts, refreshContacts } from '@/hooks/useContacts'
+import { useContactStore } from '@/store/contactStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import ContactCard from '@/components/contacts/ContactCard'
 import ContactForm from '@/components/contacts/ContactForm'
@@ -24,9 +25,16 @@ export default function Contacts() {
     return matchesRel && matchesSearch
   })
 
+  const { addContact } = useContactStore()
+
   const handleCreate = async (data) => {
-    await createContact(data)
-    await refreshContacts()
+    const result = await createContact(data)
+    // Optimistic update — show immediately without waiting for onSnapshot
+    if (result?.id) {
+      addContact({ id: result.id, ...data, createdAt: new Date().toISOString() })
+    }
+    // Also do a background REST refresh to get the canonical server data
+    refreshContacts()
   }
 
   // Called when user clicks "Review & Save" in the scan modal

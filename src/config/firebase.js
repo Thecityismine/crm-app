@@ -1,7 +1,5 @@
-// Firebase configuration
-// Replace with your Firebase project config from console.firebase.google.com
 import { initializeApp } from 'firebase/app'
-import { initializeFirestore } from 'firebase/firestore'
+import { getFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { getStorage } from 'firebase/storage'
 
@@ -16,12 +14,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-// experimentalForceLongPolling: forces HTTP long-polling for all Firestore
-// traffic, bypassing WebSocket/gRPC entirely. Fixes write timeouts in
-// environments where WebSockets are blocked or unreliable.
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-})
+export const db = getFirestore(app)
 export const auth = getAuth(app)
 export const storage = getStorage(app)
 export default app
