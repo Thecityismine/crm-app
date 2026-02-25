@@ -1,7 +1,7 @@
 // Firebase configuration
 // Replace with your Firebase project config from console.firebase.google.com
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { getStorage } from 'firebase/storage'
 
@@ -16,7 +16,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-export const db = getFirestore(app)
+// experimentalAutoDetectLongPolling: automatically falls back to HTTP
+// long-polling when the default WebSocket/gRPC channel has issues.
+// Fixes write (addDoc/setDoc) timeouts when reads (onSnapshot) still work.
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+})
 export const auth = getAuth(app)
 export const storage = getStorage(app)
 export default app
