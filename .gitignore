@@ -1,0 +1,12 @@
+node_modules
+dist
+.env.local
+.env
+*.local
+.DS_Store
+
+# Nested duplicate folder
+crm-app/
+
+# CSV data exports
+contacts/

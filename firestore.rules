@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    // All authenticated users can read/write CRM data
+    // TODO: Add team-based rules once teams are implemented
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

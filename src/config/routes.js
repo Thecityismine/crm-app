@@ -1,0 +1,17 @@
+export const ROUTES = {
+  LOGIN: '/login',
+  DASHBOARD: '/',
+  CONTACTS: '/contacts',
+  CONTACT_DETAIL: '/contacts/:id',
+  COMPANIES: '/companies',
+  COMPANY_DETAIL: '/companies/:id',
+  DEALS: '/deals',
+  DEAL_DETAIL: '/deals/:id',
+  PIPELINE: '/pipeline',
+  PROPERTIES: '/properties',
+  PROPERTY_DETAIL: '/properties/:id',
+  TASKS: '/tasks',
+  EMAILS: '/emails',
+  REPORTS: '/reports',
+  SETTINGS: '/settings',
+}
