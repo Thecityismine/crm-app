@@ -65,7 +65,7 @@ function BirthdayCard({ contact }) {
 }
 
 export default function Dashboard() {
-  const { contacts, loading } = useContacts()
+  const { contacts } = useContacts()
   const upcoming = getUpcomingBirthdays(contacts, 30)
 
   return (
@@ -79,22 +79,22 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <div className="card p-4">
           <p className="text-xs text-gray-500 mb-1">Total Contacts</p>
-          <p className="text-2xl font-bold text-gray-100">{loading ? '—' : contacts.length}</p>
+          <p className="text-2xl font-bold text-gray-100">{contacts.length}</p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-gray-500 mb-1">Upcoming Birthdays</p>
-          <p className="text-2xl font-bold text-gray-100">{loading ? '—' : upcoming.length}</p>
+          <p className="text-2xl font-bold text-gray-100">{upcoming.length}</p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-gray-500 mb-1">Overdue Follow-ups</p>
           <p className="text-2xl font-bold text-gray-100">
-            {loading ? '—' : contacts.filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) < new Date()).length}
+            {contacts.filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) < new Date()).length}
           </p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-gray-500 mb-1">Follow-ups Scheduled</p>
           <p className="text-2xl font-bold text-gray-100">
-            {loading ? '—' : contacts.filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) >= new Date()).length}
+            {contacts.filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) >= new Date()).length}
           </p>
         </div>
       </div>
@@ -108,9 +108,7 @@ export default function Dashboard() {
             <span className="ml-auto text-xs text-gray-600">Next 30 days</span>
           </div>
 
-          {loading ? (
-            <p className="text-sm text-gray-600">Loading...</p>
-          ) : upcoming.length > 0 ? (
+          {upcoming.length > 0 ? (
             <div className="divide-y divide-gray-800/50">
               {upcoming.map((c) => (
                 <BirthdayCard key={c.id} contact={c} />
@@ -130,9 +128,7 @@ export default function Dashboard() {
             <Users size={16} className="text-red-400" />
             <h2 className="text-sm font-semibold text-gray-300">Overdue Follow-ups</h2>
           </div>
-          {loading ? (
-            <p className="text-sm text-gray-600">Loading...</p>
-          ) : (() => {
+          {(() => {
             const overdue = contacts
               .filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) < new Date())
               .sort((a, b) => new Date(a.nextFollowUp) - new Date(b.nextFollowUp))

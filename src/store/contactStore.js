@@ -8,7 +8,12 @@ export const useContactStore = create(
       selectedContact: null,
       loading: false,
       initialized: false,
-      setContacts: (contacts) => set({ contacts, initialized: true }),
+      // Never wipe a populated list with an empty result — guards against slow/
+      // failed REST fetches returning [] and clearing the persisted cache.
+      setContacts: (contacts) => set((s) => ({
+        contacts: contacts.length === 0 && s.contacts.length > 0 ? s.contacts : contacts,
+        initialized: true,
+      })),
       setSelectedContact: (contact) => set({ selectedContact: contact }),
       addContact: (contact) => set((s) => ({ contacts: [contact, ...s.contacts] })),
       updateContact: (id, data) => set((s) => ({

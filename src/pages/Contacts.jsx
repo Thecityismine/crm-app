@@ -9,7 +9,7 @@ import { createContact } from '@/lib/firebase/contacts'
 import { Search, Plus, ScanLine, Users } from 'lucide-react'
 
 export default function Contacts() {
-  const { contacts, loading } = useContacts()
+  const { contacts } = useContacts()
   const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
   const [search, setSearch] = useState('')
   const [activeRel, setActiveRel] = useState('All')
@@ -41,14 +41,6 @@ export default function Contacts() {
   const handleScanExtracted = (extractedData) => {
     setScannedContact(extractedData)
     setShowForm(true)
-  }
-
-  if (loading && contacts.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading contacts...</div>
-      </div>
-    )
   }
 
   return (
