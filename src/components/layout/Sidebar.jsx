@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useUIStore } from '@/store/uiStore'
 import {
   LayoutDashboard, Users, Building2, Briefcase, Kanban,
-  MapPin, CheckSquare, Mail, BarChart2, Settings, Globe
+  MapPin, CheckSquare, Mail, BarChart2, Settings, Globe, X
 } from 'lucide-react'
 
 const links = [
@@ -19,33 +19,65 @@ const links = [
 ]
 
 export default function Sidebar() {
-  const { sidebarOpen } = useUIStore()
+  const { sidebarOpen, toggleSidebar } = useUIStore()
+
+  const handleLinkClick = () => {
+    if (window.innerWidth < 640) toggleSidebar()
+  }
+
   return (
-    <aside className={`hidden ${sidebarOpen ? 'sm:flex' : ''} flex-col w-56 bg-gray-900 border-r border-gray-800`}>
-      <div className="h-14 flex items-center px-4 border-b border-gray-800">
-        <span className="font-bold text-white text-lg tracking-tight">CRM</span>
-      </div>
-      <nav className="flex-1 p-3 space-y-0.5">
-        {links.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'active' : ''}`
-            }
+    <>
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="sm:hidden fixed inset-0 bg-black/60 z-30"
+          onClick={toggleSidebar}
+        />
+      )}
+
+      <aside className={`
+        ${sidebarOpen ? 'flex' : 'hidden'}
+        fixed sm:static inset-y-0 left-0
+        z-40 sm:z-auto
+        flex-col w-64 sm:w-56 h-screen sm:h-auto
+        bg-gray-900 border-r border-gray-800
+      `}>
+        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-800 flex-shrink-0">
+          <span className="font-bold text-white text-lg tracking-tight">CRM</span>
+          <button
+            onClick={toggleSidebar}
+            className="sm:hidden p-1 text-gray-500 hover:text-gray-300"
           >
-            <Icon size={16} />
-            {label}
+            <X size={18} />
+          </button>
+        </div>
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          {links.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              onClick={handleLinkClick}
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? 'active' : ''}`
+              }
+            >
+              <Icon size={16} />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="p-3 border-t border-gray-800 flex-shrink-0">
+          <NavLink
+            to="/settings"
+            onClick={handleLinkClick}
+            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+          >
+            <Settings size={16} />
+            Settings
           </NavLink>
-        ))}
-      </nav>
-      <div className="p-3 border-t border-gray-800">
-        <NavLink to="/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Settings size={16} />
-          Settings
-        </NavLink>
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   )
 }

@@ -15,7 +15,7 @@ export default function TopBar() {
 
   return (
     <header className="h-14 bg-gray-900 border-b border-gray-800 flex items-center px-4 gap-3 flex-shrink-0">
-      <button onClick={toggleSidebar} className="hidden sm:flex p-1.5 rounded-lg hover:bg-gray-800 text-gray-400">
+      <button onClick={toggleSidebar} className="flex p-1.5 rounded-lg hover:bg-gray-800 text-gray-400">
         <Menu size={18} />
       </button>
       <button
