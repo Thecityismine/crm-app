@@ -237,8 +237,9 @@ export default function Deals() {
           <button onClick={() => navigate('/pipeline')} className="btn-secondary flex items-center gap-1.5 text-sm">
             <Kanban size={14} /> Pipeline view
           </button>
-          <button onClick={() => setModal({ mode: 'add' })} className="btn-primary flex items-center gap-2">
-            <Plus size={15} /> Add Deal
+          <button onClick={() => setModal({ mode: 'add' })} className="btn-primary flex items-center justify-center gap-2 sm:px-4 p-2" title="Add Deal">
+            <Plus size={16} />
+            <span className="hidden sm:inline">Add Deal</span>
           </button>
         </div>
       </div>

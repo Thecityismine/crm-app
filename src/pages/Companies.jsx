@@ -302,9 +302,11 @@ export default function Companies() {
         </div>
         <button
           onClick={() => setModal({ mode: 'add' })}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center justify-center gap-2 sm:px-4 p-2"
+          title="Add Company"
         >
-          <Plus size={15} /> Add Company
+          <Plus size={16} />
+          <span className="hidden sm:inline">Add Company</span>
         </button>
       </div>
 

@@ -198,8 +198,9 @@ export default function Pipeline() {
           <h1 className="text-2xl font-semibold text-gray-100">Pipeline</h1>
           <p className="text-gray-500 text-sm mt-0.5">Track your deals and opportunities</p>
         </div>
-        <button onClick={() => handleAddDeal()} className="btn-primary flex items-center gap-2">
-          <Plus size={15} /> Add Deal
+        <button onClick={() => handleAddDeal()} className="btn-primary flex items-center justify-center gap-2 sm:px-4 p-2" title="Add Deal">
+          <Plus size={16} />
+          <span className="hidden sm:inline">Add Deal</span>
         </button>
       </div>
 

@@ -216,9 +216,11 @@ export default function Tasks() {
         </div>
         <button
           onClick={() => setShowAdd((s) => !s)}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center justify-center gap-2 sm:px-4 p-2"
+          title="Add Task"
         >
-          <Plus size={15} /> Add Task
+          <Plus size={16} />
+          <span className="hidden sm:inline">Add Task</span>
         </button>
       </div>
 

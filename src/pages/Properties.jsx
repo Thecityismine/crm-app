@@ -195,9 +195,11 @@ export default function Properties() {
         </div>
         <button
           onClick={() => setModal({ mode: 'add' })}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center justify-center gap-2 sm:px-4 p-2"
+          title="Add Property"
         >
-          <Plus size={15} /> Add Property
+          <Plus size={16} />
+          <span className="hidden sm:inline">Add Property</span>
         </button>
       </div>
 
