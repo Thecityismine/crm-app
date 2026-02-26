@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useContacts } from '@/hooks/useContacts'
 import { useContactStore } from '@/store/contactStore'
 import { updateContact } from '@/lib/firebase/contacts'
 import { logActivity } from '@/lib/firebase/activities'
 import { refreshContacts } from '@/hooks/useContacts'
+import { getTasks, updateTask } from '@/lib/firebase/tasks'
 import { getHealthScore, getNeedsAttention } from '@/lib/healthScore'
 import Avatar from '@/components/ui/Avatar'
 import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import LogActivityModal from '@/components/activities/LogActivityModal'
-import { Cake, AlertTriangle, Phone, Mail, Users } from 'lucide-react'
+import { Cake, AlertTriangle, Phone, Mail, Users, CheckSquare, ArrowRight } from 'lucide-react'
 
 // Compute upcoming birthdays within the next N days
 const getUpcomingBirthdays = (contacts, daysAhead = 30) => {
@@ -100,6 +101,20 @@ function NeedsAttentionRow({ contact, onLog }) {
   )
 }
 
+const isTaskToday = (dateStr) => {
+  if (!dateStr) return false
+  const d = new Date(dateStr + 'T12:00:00')
+  const t = new Date(); t.setHours(0, 0, 0, 0)
+  const end = new Date(t); end.setDate(end.getDate() + 1)
+  return d >= t && d < end
+}
+const isTaskOverdue = (dateStr) => {
+  if (!dateStr) return false
+  const d = new Date(dateStr + 'T12:00:00')
+  const t = new Date(); t.setHours(0, 0, 0, 0)
+  return d < t
+}
+
 export default function Dashboard() {
   const { contacts } = useContacts()
   const { updateContact: updateStoreContact } = useContactStore()
@@ -107,6 +122,11 @@ export default function Dashboard() {
   const needsAttention = getNeedsAttention(contacts).slice(0, 10)
 
   const [loggingContact, setLoggingContact] = useState(null)
+  const [tasks, setTasks] = useState([])
+
+  useEffect(() => {
+    getTasks().then(setTasks).catch(console.warn)
+  }, [])
 
   const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms'])
 
@@ -123,6 +143,13 @@ export default function Dashboard() {
   // Counts
   const overdueCount = contacts.filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) < new Date()).length
   const coldCount = contacts.filter((c) => ['cold', 'overdue'].includes(getHealthScore(c).score)).length
+  const openTasks = tasks.filter((t) => t.status !== 'completed')
+  const urgentTasks = openTasks.filter((t) => isTaskOverdue(t.dueDate) || isTaskToday(t.dueDate)).slice(0, 5)
+
+  const handleCompleteTask = async (task) => {
+    setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: 'completed' } : t))
+    try { await updateTask(task.id, { status: 'completed' }) } catch { /* silent */ }
+  }
 
   return (
     <div>
@@ -138,8 +165,10 @@ export default function Dashboard() {
           <p className="text-2xl font-bold text-gray-100">{contacts.length}</p>
         </div>
         <div className="card p-4">
-          <p className="text-xs text-gray-500 mb-1">Upcoming Birthdays</p>
-          <p className="text-2xl font-bold text-gray-100">{upcoming.length}</p>
+          <p className="text-xs text-gray-500 mb-1">Open Tasks</p>
+          <p className={`text-2xl font-bold ${openTasks.filter(t => isTaskOverdue(t.dueDate)).length > 0 ? 'text-red-400' : 'text-gray-100'}`}>
+            {openTasks.length}
+          </p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-gray-500 mb-1">Overdue Follow-ups</p>
@@ -195,37 +224,36 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Follow-ups scheduled today */}
+          {/* Tasks due today / overdue */}
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-4">
-              <Mail size={15} className="text-blue-400" />
-              <h2 className="text-sm font-semibold text-gray-300">Due Today</h2>
+              <CheckSquare size={15} className="text-blue-400" />
+              <h2 className="text-sm font-semibold text-gray-300">Tasks</h2>
+              <a href="/tasks" className="ml-auto flex items-center gap-1 text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                View all <ArrowRight size={11} />
+              </a>
             </div>
-            {(() => {
-              const today = new Date(); today.setHours(23,59,59,999)
-              const todayStart = new Date(); todayStart.setHours(0,0,0,0)
-              const due = contacts.filter((c) => {
-                if (!c.nextFollowUp) return false
-                const d = new Date(c.nextFollowUp)
-                return d >= todayStart && d <= today
-              })
-              return due.length > 0 ? (
-                <div className="space-y-2">
-                  {due.map((c) => (
-                    <div key={c.id} className="flex items-center gap-2">
-                      <Avatar firstName={c.firstName} lastName={c.lastName} size="sm" />
-                      <span className="text-sm text-gray-300 truncate flex-1">{c.firstName} {c.lastName}</span>
-                      <button
-                        onClick={() => setLoggingContact(c)}
-                        className="text-xs text-blue-400 hover:text-blue-300 flex-shrink-0"
-                      >Log</button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 text-center py-4">Nothing due today</p>
-              )
-            })()}
+            {urgentTasks.length > 0 ? (
+              <div className="space-y-2">
+                {urgentTasks.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2.5 py-1">
+                    <button
+                      onClick={() => handleCompleteTask(t)}
+                      className="flex-shrink-0 w-4 h-4 rounded border border-gray-600 hover:border-gray-400 transition-colors bg-transparent"
+                      style={{ minWidth: 16, minHeight: 16 }}
+                    />
+                    <span className={`text-xs flex-1 truncate ${isTaskOverdue(t.dueDate) ? 'text-red-300' : 'text-gray-300'}`}>
+                      {t.title}
+                    </span>
+                    <span className={`text-xs flex-shrink-0 ${isTaskOverdue(t.dueDate) ? 'text-red-500' : 'text-amber-400'}`}>
+                      {isTaskOverdue(t.dueDate) ? 'Overdue' : 'Today'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">No urgent tasks</p>
+            )}
           </div>
         </div>
       </div>
