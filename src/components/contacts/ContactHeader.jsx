@@ -5,7 +5,9 @@ import { Mail, Phone, MapPin, Linkedin, Globe, Edit2, Trash2 } from 'lucide-reac
 
 export default function ContactHeader({ contact, onEdit, onDelete }) {
   // Collect all emails (new multi-email field or fallback to single email)
-  const emails = contact.emails?.length ? contact.emails : (contact.email ? [contact.email] : [])
+  const emails = Array.isArray(contact.emails) && contact.emails.length
+    ? contact.emails
+    : contact.email ? [contact.email] : []
 
   return (
     <div className="card p-4 sm:p-6 mb-6">

@@ -27,6 +27,7 @@ function toValue(v) {
   if (typeof v === 'boolean') return { booleanValue: v }
   if (typeof v === 'number') return { doubleValue: v }
   if (typeof v === 'string') return { stringValue: v }
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(toValue) } }
   return { stringValue: String(v) }
 }
 
