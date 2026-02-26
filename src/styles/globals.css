@@ -32,9 +32,12 @@
   }
 }
 
-/* iOS safe-area support for bottom nav */
+/* iOS safe-area support */
 .bottom-nav-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
 /* Leaflet popup dark theme overrides */

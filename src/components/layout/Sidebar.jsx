@@ -38,7 +38,7 @@ export default function Sidebar() {
       <aside className={`
         ${sidebarOpen ? 'flex' : 'hidden'}
         fixed sm:static inset-y-0 left-0
-        z-40 sm:z-auto
+        z-50 sm:z-auto
         flex-col w-64 sm:w-56 h-screen sm:h-auto
         bg-gray-900 border-r border-gray-800
       `}>
@@ -67,7 +67,7 @@ export default function Sidebar() {
             </NavLink>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-800 flex-shrink-0">
+        <div className="p-3 pb-safe border-t border-gray-800 flex-shrink-0">
           <NavLink
             to="/settings"
             onClick={handleLinkClick}
