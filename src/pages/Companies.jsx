@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Building2, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Building2, Trash2, Edit2, Globe, Phone, MapPin, Users, FileText } from 'lucide-react'
 import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/lib/firebase/companies'
 import { useContactStore } from '@/store/contactStore'
 import CompanyCard from '@/components/companies/CompanyCard'
@@ -9,6 +10,69 @@ const INDUSTRIES = [
   'Real Estate', 'Finance', 'Banking', 'Law', 'Consulting', 'Technology',
   'Healthcare', 'Construction', 'Architecture', 'Insurance', 'Government', 'Other',
 ]
+
+function CompanyPreviewModal({ company, contactCount, onClose, onEdit }) {
+  return (
+    <Modal title={company.name} onClose={onClose}>
+      <div className="space-y-4">
+        {/* Industry badge */}
+        {company.industry && (
+          <span className="inline-block text-xs bg-gray-800 border border-gray-700 text-gray-400 px-2.5 py-1 rounded-full">
+            {company.industry}
+          </span>
+        )}
+
+        {/* Detail rows */}
+        <div className="space-y-2.5">
+          {contactCount > 0 && (
+            <div className="flex items-center gap-3 text-sm text-gray-400">
+              <Users size={14} className="text-gray-600 flex-shrink-0" />
+              {contactCount} contact{contactCount !== 1 ? 's' : ''}
+            </div>
+          )}
+          {company.phone && (
+            <div className="flex items-center gap-3 text-sm text-gray-400">
+              <Phone size={14} className="text-gray-600 flex-shrink-0" />
+              {company.phone}
+            </div>
+          )}
+          {company.location && (
+            <div className="flex items-center gap-3 text-sm text-gray-400">
+              <MapPin size={14} className="text-gray-600 flex-shrink-0" />
+              {company.location}
+            </div>
+          )}
+          {company.website && (
+            <div className="flex items-center gap-3 text-sm text-gray-400">
+              <Globe size={14} className="text-gray-600 flex-shrink-0" />
+              <a
+                href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-gray-200 truncate"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {company.website.replace(/^https?:\/\//, '')}
+              </a>
+            </div>
+          )}
+          {company.notes && (
+            <div className="flex items-start gap-3 text-sm text-gray-400">
+              <FileText size={14} className="text-gray-600 flex-shrink-0 mt-0.5" />
+              <p className="whitespace-pre-wrap leading-relaxed">{company.notes}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <button onClick={onEdit} className="btn-secondary flex items-center gap-1.5">
+            <Edit2 size={13} /> Edit
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
 
 function CompanyModal({ company, onClose, onSave, onDelete }) {
   const [form, setForm] = useState({
@@ -149,7 +213,7 @@ export default function Companies() {
   const [companies, setCompanies] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [modal, setModal] = useState(null)
+  const [modal, setModal] = useState(null) // { mode: 'preview'|'edit'|'add', company? }
 
   useEffect(() => {
     getCompanies()
@@ -251,13 +315,21 @@ export default function Companies() {
               key={company.id}
               company={company}
               contactCount={contactCounts[company.name?.toLowerCase()] || 0}
-              onClick={() => setModal({ mode: 'edit', company })}
+              onClick={() => setModal({ mode: 'preview', company })}
             />
           ))}
         </div>
       )}
 
-      {modal && (
+      {modal?.mode === 'preview' && (
+        <CompanyPreviewModal
+          company={modal.company}
+          contactCount={contactCounts[modal.company.name?.toLowerCase()] || 0}
+          onClose={() => setModal(null)}
+          onEdit={() => setModal({ mode: 'edit', company: modal.company })}
+        />
+      )}
+      {(modal?.mode === 'edit' || modal?.mode === 'add') && (
         <CompanyModal
           company={modal.mode === 'edit' ? modal.company : null}
           onClose={() => setModal(null)}
