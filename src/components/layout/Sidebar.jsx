@@ -20,9 +20,8 @@ const links = [
 
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
-  if (!sidebarOpen) return null
   return (
-    <aside className="w-56 bg-gray-900 border-r border-gray-800 flex flex-col">
+    <aside className={`hidden ${sidebarOpen ? 'sm:flex' : ''} flex-col w-56 bg-gray-900 border-r border-gray-800`}>
       <div className="h-14 flex items-center px-4 border-b border-gray-800">
         <span className="font-bold text-white text-lg tracking-tight">CRM</span>
       </div>
