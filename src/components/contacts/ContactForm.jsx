@@ -18,7 +18,7 @@ const emptyForm = {
 
 function initEmails(contact) {
   if (!contact) return ['']
-  if (contact.emails?.length) return contact.emails.map((e) => e || '')
+  if (Array.isArray(contact.emails) && contact.emails.length) return contact.emails.map((e) => e || '')
   return [contact.email || '']
 }
 
