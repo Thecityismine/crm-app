@@ -1,5 +1,6 @@
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
+import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import { Mail, Phone, MapPin, Linkedin, Globe, Edit2, Trash2 } from 'lucide-react'
 
 export default function ContactHeader({ contact, onEdit, onDelete }) {
@@ -26,6 +27,7 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {contact.relationship && <Badge label={contact.relationship} />}
+              <HealthScoreBadge contact={contact} />
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
+import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import { Mail, Phone, Calendar, MapPin } from 'lucide-react'
 
 const formatFollowUp = (dateStr) => {
@@ -38,7 +39,10 @@ export default function ContactCard({ contact }) {
             <div className="text-xs text-gray-500 truncate">{contact.company}</div>
           )}
         </div>
-        {contact.relationship && <Badge label={contact.relationship} />}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          {contact.relationship && <Badge label={contact.relationship} />}
+          <HealthScoreBadge contact={contact} />
+        </div>
       </div>
 
       <div className="space-y-1.5">
