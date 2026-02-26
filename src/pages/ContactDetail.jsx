@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getContact, updateContact, deleteContact } from '@/lib/firebase/contacts'
 import { refreshContacts } from '@/hooks/useContacts'
+import { useContactStore } from '@/store/contactStore'
 import ContactHeader from '@/components/contacts/ContactHeader'
 import ContactTimeline from '@/components/contacts/ContactTimeline'
 import ContactForm from '@/components/contacts/ContactForm'
@@ -27,15 +28,23 @@ const formatDate = (dateStr) => {
 export default function ContactDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [contact, setContact] = useState(null)
+  const { contacts } = useContactStore()
+  const [contact, setContact] = useState(() => contacts.find((c) => c.id === id) ?? null)
   const [loading, setLoading] = useState(true)
   const [showEdit, setShowEdit] = useState(false)
 
   useEffect(() => {
-    getContact(id).then((c) => {
-      setContact(c)
-      setLoading(false)
-    })
+    // Seed from store immediately so the page is never blank
+    const cached = contacts.find((c) => c.id === id)
+    if (cached) setContact(cached)
+
+    // Always fetch fresh data from Firestore in the background
+    getContact(id)
+      .then((c) => {
+        setContact(c)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [id])
 
   const handleSave = async (data) => {
