@@ -21,13 +21,13 @@ function CompanyAvatar({ name }) {
   )
 }
 
-export default function CompanyCard({ company, contactCount = 0 }) {
+export default function CompanyCard({ company, contactCount = 0, onClick }) {
   const navigate = useNavigate()
 
   return (
     <div
       className="card p-4 cursor-pointer hover:border-gray-700 hover:bg-gray-800/50 transition-all"
-      onClick={() => navigate(`/companies/${company.id}`)}
+      onClick={onClick ?? (() => navigate(`/companies/${company.id}`))}
     >
       <div className="flex items-start gap-3 mb-3">
         <CompanyAvatar name={company.name} />

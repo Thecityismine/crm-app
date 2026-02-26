@@ -247,18 +247,12 @@ export default function Companies() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((company) => (
-            <div key={company.id} className="relative group">
-              <CompanyCard
-                company={company}
-                contactCount={contactCounts[company.name?.toLowerCase()] || 0}
-              />
-              <button
-                onClick={(e) => { e.stopPropagation(); setModal({ mode: 'edit', company }) }}
-                className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-xs text-gray-600 hover:text-gray-300 bg-gray-800 border border-gray-700 px-2 py-1 rounded-lg transition-all"
-              >
-                Edit
-              </button>
-            </div>
+            <CompanyCard
+              key={company.id}
+              company={company}
+              contactCount={contactCounts[company.name?.toLowerCase()] || 0}
+              onClick={() => setModal({ mode: 'edit', company })}
+            />
           ))}
         </div>
       )}
