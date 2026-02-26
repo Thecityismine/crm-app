@@ -40,7 +40,6 @@ export default function ContactCard({ contact }) {
           )}
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          {contact.relationship && <Badge label={contact.relationship} />}
           <HealthScoreBadge contact={contact} />
         </div>
       </div>
