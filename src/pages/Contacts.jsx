@@ -43,7 +43,7 @@ export default function Contacts() {
     setShowForm(true)
   }
 
-  if (loading) {
+  if (loading && contacts.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-500">Loading contacts...</div>
