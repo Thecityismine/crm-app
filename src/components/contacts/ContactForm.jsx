@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Modal from '@/components/ui/Modal'
-import Avatar, { getLinkedInPhotoUrl } from '@/components/ui/Avatar'
+import Avatar from '@/components/ui/Avatar'
 import { useSettingsStore } from '@/store/settingsStore'
 import { AlertCircle } from 'lucide-react'
 
@@ -63,8 +63,6 @@ export default function ContactForm({ contact, onClose, onSave }) {
     }
   }
 
-  const photoSrc = form.photoUrl || getLinkedInPhotoUrl(form.linkedin)
-
   // If the contact's current relationship value isn't in the list, append it so it
   // still shows correctly in the dropdown while editing.
   const relationshipList = (contact?.relationship && !relationshipOptions.includes(contact.relationship))
@@ -76,7 +74,7 @@ export default function ContactForm({ contact, onClose, onSave }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Photo preview */}
         <div className="flex items-center gap-4">
-          <Avatar firstName={form.firstName} lastName={form.lastName} size="lg" src={photoSrc} />
+          <Avatar firstName={form.firstName} lastName={form.lastName} size="lg" src={form.photoUrl} linkedin={form.linkedin} />
           <div className="flex-1">
             <label className="label">Photo URL <span className="text-gray-600 font-normal">(optional override)</span></label>
             <input

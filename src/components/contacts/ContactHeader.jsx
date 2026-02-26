@@ -1,4 +1,4 @@
-import Avatar, { getLinkedInPhotoUrl } from '@/components/ui/Avatar'
+import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import { Mail, Phone, MapPin, Linkedin, Globe, Edit2, Trash2 } from 'lucide-react'
 
@@ -11,7 +11,8 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
             firstName={contact.firstName}
             lastName={contact.lastName}
             size="xl"
-            src={contact.photoUrl || getLinkedInPhotoUrl(contact.linkedin)}
+            src={contact.photoUrl}
+            linkedin={contact.linkedin}
           />
           <div>
             <h1 className="text-2xl font-bold text-gray-100">

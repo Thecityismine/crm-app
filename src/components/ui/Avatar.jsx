@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const COLORS = [
   'bg-blue-600', 'bg-purple-600', 'bg-green-600', 'bg-red-600',
@@ -7,17 +7,42 @@ const COLORS = [
 
 const getColor = (name) => COLORS[(name?.charCodeAt(0) || 0) % COLORS.length]
 
-// Extract LinkedIn username from stored URL and build unavatar.io proxy URL
-// Handles: "linkedin.com/in/username", "https://www.linkedin.com/in/username/"
-export const getLinkedInPhotoUrl = (linkedinUrl) => {
+// In-memory cache so we don't re-fetch the same LinkedIn URL during a session
+const _photoCache = {}
+
+// Fetches the LinkedIn profile photo URL via the server-side proxy.
+// Returns a Promise<string|null>.
+export const fetchLinkedInPhotoUrl = async (linkedinUrl) => {
   if (!linkedinUrl) return null
-  const match = linkedinUrl.match(/linkedin\.com\/in\/([^/?#\s]+)/i)
-  if (!match) return null
-  return `https://unavatar.io/linkedin/${match[1]}`
+  if (!/linkedin\.com\/in\//i.test(linkedinUrl)) return null
+
+  if (_photoCache[linkedinUrl] !== undefined) return _photoCache[linkedinUrl]
+
+  try {
+    const res = await fetch(`/api/linkedin-photo?url=${encodeURIComponent(linkedinUrl)}`)
+    if (!res.ok) {
+      _photoCache[linkedinUrl] = null
+      return null
+    }
+    const data = await res.json()
+    _photoCache[linkedinUrl] = data.url || null
+    return _photoCache[linkedinUrl]
+  } catch {
+    _photoCache[linkedinUrl] = null
+    return null
+  }
 }
 
-export default function Avatar({ firstName, lastName, size = 'md', src }) {
+export default function Avatar({ firstName, lastName, size = 'md', src, linkedin }) {
   const [imgError, setImgError] = useState(false)
+  const [linkedinPhoto, setLinkedinPhoto] = useState(null)
+
+  useEffect(() => {
+    if (src || !linkedin) return
+    fetchLinkedInPhotoUrl(linkedin).then((url) => {
+      if (url) setLinkedinPhoto(url)
+    })
+  }, [src, linkedin])
 
   const sizes = {
     sm: 'w-7 h-7 text-xs',
@@ -27,11 +52,12 @@ export default function Avatar({ firstName, lastName, size = 'md', src }) {
   }
 
   const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || '?'
+  const photoSrc = src || linkedinPhoto
 
-  if (src && !imgError) {
+  if (photoSrc && !imgError) {
     return (
       <img
-        src={src}
+        src={photoSrc}
         alt={`${firstName} ${lastName}`}
         className={`${sizes[size]} rounded-full object-cover flex-shrink-0 bg-gray-800`}
         onError={() => setImgError(true)}

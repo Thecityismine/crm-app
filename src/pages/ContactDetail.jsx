@@ -122,7 +122,10 @@ export default function ContactDetail() {
 
         {/* Activity sidebar */}
         <div>
-          <ContactTimeline contact={contact} />
+          <ContactTimeline
+            contact={contact}
+            onContactUpdated={(patch) => setContact((c) => ({ ...c, ...patch }))}
+          />
         </div>
       </div>
 

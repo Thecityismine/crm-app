@@ -1,8 +1,6 @@
 import { useEffect } from 'react'
 import { useContactStore } from '@/store/contactStore'
-import { subscribeToContacts, getContacts, createContact, updateContact, deleteContact } from '@/lib/firebase/contacts'
-
-let _unsub = null
+import { getContacts, createContact, updateContact, deleteContact } from '@/lib/firebase/contacts'
 
 // Force a REST API read and update the store.
 // Used after writes and to re-sync after a long idle period.
@@ -17,11 +15,10 @@ export const useContacts = () => {
   useEffect(() => {
     if (initialized) return
 
-    setLoading(true)
+    // Only show the loading spinner when there are no cached contacts.
+    // When contacts are already in localStorage, fetch silently in the background.
+    if (contacts.length === 0) setLoading(true)
 
-    // REST API fetch — reliable regardless of WebSocket/onSnapshot status.
-    // This ensures contacts appear even on networks where the Firebase
-    // WebSocket connection is unreliable.
     getContacts()
       .then((data) => {
         setContacts(data)
@@ -31,15 +28,6 @@ export const useContacts = () => {
         console.error('Initial contacts load failed:', err)
         setLoading(false)
       })
-
-    // onSnapshot as a secondary real-time mechanism.
-    // If it fires successfully it will keep the list updated.
-    if (!_unsub) {
-      _unsub = subscribeToContacts((data) => {
-        useContactStore.getState().setContacts(data)
-        useContactStore.getState().setLoading(false)
-      })
-    }
   }, [initialized])
 
   return { contacts, loading, initialized, createContact, updateContact, deleteContact }

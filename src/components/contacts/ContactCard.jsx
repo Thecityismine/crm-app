@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import Avatar, { getLinkedInPhotoUrl } from '@/components/ui/Avatar'
+import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import { Mail, Phone, Calendar, MapPin } from 'lucide-react'
 
@@ -24,7 +24,8 @@ export default function ContactCard({ contact }) {
         <Avatar
           firstName={contact.firstName}
           lastName={contact.lastName}
-          src={contact.photoUrl || getLinkedInPhotoUrl(contact.linkedin)}
+          src={contact.photoUrl}
+          linkedin={contact.linkedin}
         />
         <div className="min-w-0 flex-1">
           <div className="font-medium text-gray-100 truncate">
