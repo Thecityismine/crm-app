@@ -109,6 +109,20 @@ export const getDeals = async () => {
     }))
 }
 
+export const getDeal = async (id) => {
+  const token = await getIdToken()
+  const response = await fetch(`${colUrl()}/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (response.status === 404) return null
+  if (!response.ok) {
+    const e = await response.json().catch(() => ({}))
+    throw new Error(e.error?.message || `Get failed (${response.status})`)
+  }
+  const doc = await response.json()
+  return { id: doc.name.split('/').pop(), ...fromFields(doc.fields || {}) }
+}
+
 export const createDeal = (data) => restWrite('create', null, data)
 export const updateDeal = (id, data) => restWrite('update', id, data)
 export const deleteDeal = (id) => restWrite('delete', id, null)
