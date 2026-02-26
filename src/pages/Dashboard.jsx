@@ -144,7 +144,16 @@ export default function Dashboard() {
   const overdueCount = contacts.filter((c) => c.nextFollowUp && new Date(c.nextFollowUp) < new Date()).length
   const coldCount = contacts.filter((c) => ['cold', 'overdue'].includes(getHealthScore(c).score)).length
   const openTasks = tasks.filter((t) => t.status !== 'completed')
-  const urgentTasks = openTasks.filter((t) => isTaskOverdue(t.dueDate) || isTaskToday(t.dueDate)).slice(0, 5)
+  const displayTasks = [...openTasks].sort((a, b) => {
+    const aOver = isTaskOverdue(a.dueDate), bOver = isTaskOverdue(b.dueDate)
+    const aToday = isTaskToday(a.dueDate), bToday = isTaskToday(b.dueDate)
+    if (aOver !== bOver) return aOver ? -1 : 1
+    if (aToday !== bToday) return aToday ? -1 : 1
+    if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate)
+    if (a.dueDate) return -1
+    if (b.dueDate) return 1
+    return 0
+  }).slice(0, 5)
 
   const handleCompleteTask = async (task) => {
     setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: 'completed' } : t))
@@ -233,26 +242,35 @@ export default function Dashboard() {
                 View all <ArrowRight size={11} />
               </a>
             </div>
-            {urgentTasks.length > 0 ? (
+            {displayTasks.length > 0 ? (
               <div className="space-y-2">
-                {urgentTasks.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2.5 py-1">
-                    <button
-                      onClick={() => handleCompleteTask(t)}
-                      className="flex-shrink-0 w-4 h-4 rounded border border-gray-600 hover:border-gray-400 transition-colors bg-transparent"
-                      style={{ minWidth: 16, minHeight: 16 }}
-                    />
-                    <span className={`text-xs flex-1 truncate ${isTaskOverdue(t.dueDate) ? 'text-red-300' : 'text-gray-300'}`}>
-                      {t.title}
-                    </span>
-                    <span className={`text-xs flex-shrink-0 ${isTaskOverdue(t.dueDate) ? 'text-red-500' : 'text-amber-400'}`}>
-                      {isTaskOverdue(t.dueDate) ? 'Overdue' : 'Today'}
-                    </span>
-                  </div>
-                ))}
+                {displayTasks.map((t) => {
+                  const overdue = isTaskOverdue(t.dueDate)
+                  const today = isTaskToday(t.dueDate)
+                  const dateLabel = overdue ? 'Overdue' : today ? 'Today' : t.dueDate
+                    ? new Date(t.dueDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    : ''
+                  return (
+                    <div key={t.id} className="flex items-center gap-2.5 py-1">
+                      <button
+                        onClick={() => handleCompleteTask(t)}
+                        className="flex-shrink-0 w-4 h-4 rounded border border-gray-600 hover:border-gray-400 transition-colors bg-transparent"
+                        style={{ minWidth: 16, minHeight: 16 }}
+                      />
+                      <span className={`text-xs flex-1 truncate ${overdue ? 'text-red-300' : 'text-gray-300'}`}>
+                        {t.title}
+                      </span>
+                      {dateLabel && (
+                        <span className={`text-xs flex-shrink-0 ${overdue ? 'text-red-500' : today ? 'text-amber-400' : 'text-gray-500'}`}>
+                          {dateLabel}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-4">No urgent tasks</p>
+              <p className="text-sm text-gray-500 text-center py-4">No open tasks</p>
             )}
           </div>
         </div>
