@@ -5,13 +5,21 @@ import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/lib
 import { useContactStore } from '@/store/contactStore'
 import CompanyCard from '@/components/companies/CompanyCard'
 import Modal from '@/components/ui/Modal'
+import Avatar from '@/components/ui/Avatar'
 
 const INDUSTRIES = [
   'Real Estate', 'Finance', 'Banking', 'Law', 'Consulting', 'Technology',
   'Healthcare', 'Construction', 'Architecture', 'Insurance', 'Government', 'Other',
 ]
 
-function CompanyPreviewModal({ company, contactCount, onClose, onEdit }) {
+function CompanyPreviewModal({ company, companyContacts, onClose, onEdit }) {
+  const navigate = useNavigate()
+
+  const handleContactClick = (contactId) => {
+    onClose()
+    navigate(`/contacts/${contactId}`)
+  }
+
   return (
     <Modal title={company.name} onClose={onClose}>
       <div className="space-y-4">
@@ -24,12 +32,6 @@ function CompanyPreviewModal({ company, contactCount, onClose, onEdit }) {
 
         {/* Detail rows */}
         <div className="space-y-2.5">
-          {contactCount > 0 && (
-            <div className="flex items-center gap-3 text-sm text-gray-400">
-              <Users size={14} className="text-gray-600 flex-shrink-0" />
-              {contactCount} contact{contactCount !== 1 ? 's' : ''}
-            </div>
-          )}
           {company.phone && (
             <div className="flex items-center gap-3 text-sm text-gray-400">
               <Phone size={14} className="text-gray-600 flex-shrink-0" />
@@ -64,7 +66,33 @@ function CompanyPreviewModal({ company, contactCount, onClose, onEdit }) {
           )}
         </div>
 
-        <div className="flex justify-end pt-2">
+        {/* Contacts list */}
+        {companyContacts.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <Users size={12} /> {companyContacts.length} Contact{companyContacts.length !== 1 ? 's' : ''}
+            </p>
+            <div className="space-y-1">
+              {companyContacts.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => handleContactClick(c.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors text-left"
+                >
+                  <Avatar firstName={c.firstName} lastName={c.lastName} size="sm" src={c.photoUrl} linkedin={c.linkedin} />
+                  <div className="min-w-0">
+                    <p className="text-sm text-gray-200 font-medium truncate">
+                      {c.firstName} {c.lastName}
+                    </p>
+                    {c.title && <p className="text-xs text-gray-500 truncate">{c.title}</p>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end pt-2 border-t border-gray-800">
           <button onClick={onEdit} className="btn-secondary flex items-center gap-1.5">
             <Edit2 size={13} /> Edit
           </button>
@@ -324,7 +352,9 @@ export default function Companies() {
       {modal?.mode === 'preview' && (
         <CompanyPreviewModal
           company={modal.company}
-          contactCount={contactCounts[modal.company.name?.toLowerCase()] || 0}
+          companyContacts={contacts.filter(
+            (c) => c.company?.toLowerCase() === modal.company.name?.toLowerCase()
+          )}
           onClose={() => setModal(null)}
           onEdit={() => setModal({ mode: 'edit', company: modal.company })}
         />
