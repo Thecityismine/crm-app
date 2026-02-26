@@ -5,8 +5,9 @@ import { useSettingsStore } from '@/store/settingsStore'
 import ContactCard from '@/components/contacts/ContactCard'
 import ContactForm from '@/components/contacts/ContactForm'
 import ScanContactModal from '@/components/contacts/ScanContactModal'
+import CSVImportModal from '@/components/contacts/CSVImportModal'
 import { createContact } from '@/lib/firebase/contacts'
-import { Search, Plus, ScanLine, Users } from 'lucide-react'
+import { Search, Plus, ScanLine, Users, FileUp } from 'lucide-react'
 
 export default function Contacts() {
   const { contacts } = useContacts()
@@ -15,6 +16,7 @@ export default function Contacts() {
   const [activeRel, setActiveRel] = useState('All')
   const [showForm, setShowForm] = useState(false)
   const [showScan, setShowScan] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [scannedContact, setScannedContact] = useState(null)
 
   const filtered = contacts.filter((c) => {
@@ -52,6 +54,14 @@ export default function Contacts() {
           <p className="text-gray-500 text-sm mt-0.5">{contacts.length} total</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="btn-secondary flex items-center justify-center gap-2 sm:px-4 p-2"
+            title="Import from CSV"
+          >
+            <FileUp size={15} />
+            <span className="hidden sm:inline">Import</span>
+          </button>
           <button
             onClick={() => setShowScan(true)}
             className="btn-secondary flex items-center justify-center gap-2 sm:px-4 p-2"
@@ -119,11 +129,19 @@ export default function Contacts() {
           </p>
           {!search && activeRel === 'All' && (
             <p className="text-gray-600 text-sm mt-1">
-              Add one manually or import from CSV in{' '}
-              <a href="/settings" className="text-brand-500 hover:underline">Settings</a>
+              Add one manually or{' '}
+              <button onClick={() => setShowImport(true)} className="text-brand-500 hover:underline">import from CSV</button>
             </p>
           )}
         </div>
+      )}
+
+      {/* CSV import modal */}
+      {showImport && (
+        <CSVImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => { refreshContacts(); setShowImport(false) }}
+        />
       )}
 
       {/* Scan modal */}
