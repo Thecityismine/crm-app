@@ -31,3 +31,28 @@
     @apply block text-sm font-medium text-gray-300 mb-1;
   }
 }
+
+/* Leaflet popup dark theme overrides */
+.leaflet-popup-content-wrapper {
+  background: #111827 !important;
+  border: 1px solid #1f2937 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+.leaflet-popup-tip-container .leaflet-popup-tip {
+  background: #111827 !important;
+}
+.leaflet-popup-close-button {
+  color: #6b7280 !important;
+  font-size: 18px !important;
+  padding: 4px 8px !important;
+}
+.leaflet-popup-close-button:hover {
+  color: #f3f4f6 !important;
+}

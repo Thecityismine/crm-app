@@ -10,6 +10,7 @@ export const ROUTES = {
   PIPELINE: '/pipeline',
   PROPERTIES: '/properties',
   PROPERTY_DETAIL: '/properties/:id',
+  MAP: '/map',
   TASKS: '/tasks',
   EMAILS: '/emails',
   REPORTS: '/reports',

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useUIStore } from '@/store/uiStore'
 import {
   LayoutDashboard, Users, Building2, Briefcase, Kanban,
-  MapPin, CheckSquare, Mail, BarChart2, Settings
+  MapPin, CheckSquare, Mail, BarChart2, Settings, Globe
 } from 'lucide-react'
 
 const links = [
@@ -12,6 +12,7 @@ const links = [
   { to: '/deals', icon: Briefcase, label: 'Deals' },
   { to: '/pipeline', icon: Kanban, label: 'Pipeline' },
   { to: '/properties', icon: MapPin, label: 'Properties' },
+  { to: '/map', icon: Globe, label: 'Map' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { to: '/emails', icon: Mail, label: 'Emails' },
   { to: '/reports', icon: BarChart2, label: 'Reports' },

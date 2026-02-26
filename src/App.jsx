@@ -12,6 +12,7 @@ import DealDetail from '@/pages/DealDetail'
 import Pipeline from '@/pages/Pipeline'
 import Properties from '@/pages/Properties'
 import PropertyDetail from '@/pages/PropertyDetail'
+import ContactMap from '@/pages/ContactMap'
 import Tasks from '@/pages/Tasks'
 import Emails from '@/pages/Emails'
 import Reports from '@/pages/Reports'
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="pipeline" element={<Pipeline />} />
           <Route path="properties" element={<Properties />} />
           <Route path="properties/:id" element={<PropertyDetail />} />
+          <Route path="map" element={<ContactMap />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="emails" element={<Emails />} />
           <Route path="reports" element={<Reports />} />
