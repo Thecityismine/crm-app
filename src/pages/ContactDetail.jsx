@@ -29,19 +29,16 @@ export default function ContactDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { contacts } = useContactStore()
-  const [contact, setContact] = useState(() => contacts.find((c) => c.id === id) ?? null)
-  const [loading, setLoading] = useState(true)
+  const cached = contacts.find((c) => c.id === id) ?? null
+  const [contact, setContact] = useState(cached)
+  const [loading, setLoading] = useState(!cached)
   const [showEdit, setShowEdit] = useState(false)
 
   useEffect(() => {
-    // Seed from store immediately so the page is never blank
-    const cached = contacts.find((c) => c.id === id)
-    if (cached) setContact(cached)
-
-    // Always fetch fresh data from Firestore in the background
+    // Fetch fresh data from Firestore in the background
     getContact(id)
       .then((c) => {
-        setContact(c)
+        if (c) setContact(c)
         setLoading(false)
       })
       .catch(() => setLoading(false))
