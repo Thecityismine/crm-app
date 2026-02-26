@@ -126,3 +126,47 @@ export const getCompany = async (id) => {
 export const createCompany = (data) => restWrite('create', null, data)
 export const updateCompany = (id, data) => restWrite('update', id, data)
 export const deleteCompany = (id) => restWrite('delete', id, null)
+
+/**
+ * Silently ensures a company record exists for the given name.
+ * If a company with that exact name already exists, does nothing.
+ * If not, creates one automatically.
+ * Designed to be called fire-and-forget (no await needed).
+ */
+export const ensureCompany = async (name) => {
+  if (!name?.trim()) return
+  const trimmed = name.trim()
+  try {
+    const token = await getIdToken()
+    const pid = projectId()
+    const url = `https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents:runQuery`
+
+    // Check if a company with this exact name already exists
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: COLLECTIONS.COMPANIES }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'name' },
+              op: 'EQUAL',
+              value: { stringValue: trimmed },
+            },
+          },
+          limit: 1,
+        },
+      }),
+    })
+
+    if (!response.ok) return
+    const rows = await response.json()
+    const exists = rows.some((r) => r.document)
+    if (!exists) {
+      await restWrite('create', null, { name: trimmed })
+    }
+  } catch {
+    // Silent — never block a contact save over a company sync failure
+  }
+}

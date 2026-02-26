@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
 import { useSettingsStore } from '@/store/settingsStore'
+import { ensureCompany } from '@/lib/firebase/companies'
 import { AlertCircle } from 'lucide-react'
 
 const INTERVALS = ['30 Days', '60 Days', '90 Days', '6 Months', '1 Year']
@@ -54,6 +55,8 @@ export default function ContactForm({ contact, onClose, onSave }) {
         setTimeout(() => reject(new Error('Save timed out — check your connection and try again.')), 15000)
       )
       await Promise.race([onSave(data), timeout])
+      // Auto-create company record if a company name was entered
+      if (data.company?.trim()) ensureCompany(data.company)
       onClose()
     } catch (err) {
       console.error('ContactForm save error:', err)
