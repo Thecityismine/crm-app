@@ -54,16 +54,19 @@ export default function Contacts() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowScan(true)}
-            className="btn-secondary flex items-center gap-2"
+            className="btn-secondary flex items-center justify-center gap-2 sm:px-4 p-2"
             title="Scan contact from image"
           >
-            <ScanLine size={15} /> Scan
+            <ScanLine size={15} />
+            <span className="hidden sm:inline">Scan</span>
           </button>
           <button
             onClick={() => { setScannedContact(null); setShowForm(true) }}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex items-center justify-center gap-2 sm:px-4 p-2"
+            title="Add Contact"
           >
-            <Plus size={16} /> Add Contact
+            <Plus size={16} />
+            <span className="hidden sm:inline">Add Contact</span>
           </button>
         </div>
       </div>
