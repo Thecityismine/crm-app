@@ -1,61 +1,102 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
 import { useSettingsStore } from '@/store/settingsStore'
 import { ensureCompany } from '@/lib/firebase/companies'
-import { AlertCircle } from 'lucide-react'
+import { storage } from '@/config/firebase'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { AlertCircle, Camera, Loader2, Plus, X } from 'lucide-react'
 
 const INTERVALS = ['30 Days', '60 Days', '90 Days', '6 Months', '1 Year']
 
 const emptyForm = {
   firstName: '', lastName: '', company: '', title: '', relationship: '',
-  email: '', mobilePhone: '', officePhone: '',
+  emails: [''], mobilePhone: '', officePhone: '',
   location: '', address: '', linkedin: '', website: '', interval: '',
   nextFollowUp: '', birthdate: '', clientNotes: '', university: '', photoUrl: '',
 }
 
+function initEmails(contact) {
+  if (!contact) return ['']
+  if (contact.emails?.length) return contact.emails.map((e) => e || '')
+  return [contact.email || '']
+}
+
 export default function ContactForm({ contact, onClose, onSave }) {
   const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
+  const fileInputRef = useRef(null)
+
   const [form, setForm] = useState(contact ? {
-    firstName: contact.firstName || '',
-    lastName: contact.lastName || '',
-    company: contact.company || '',
-    title: contact.title || '',
+    firstName:    contact.firstName    || '',
+    lastName:     contact.lastName     || '',
+    company:      contact.company      || '',
+    title:        contact.title        || '',
     relationship: contact.relationship || '',
-    email: contact.email || '',
-    mobilePhone: contact.mobilePhone || '',
-    officePhone: contact.officePhone || '',
-    location: contact.location || '',
-    address: contact.address || '',
-    linkedin: contact.linkedin || '',
-    website: contact.website || '',
-    interval: contact.interval || '',
+    emails:       initEmails(contact),
+    mobilePhone:  contact.mobilePhone  || '',
+    officePhone:  contact.officePhone  || '',
+    location:     contact.location     || '',
+    address:      contact.address      || '',
+    linkedin:     contact.linkedin     || '',
+    website:      contact.website      || '',
+    interval:     contact.interval     || '',
     nextFollowUp: contact.nextFollowUp ? contact.nextFollowUp.slice(0, 10) : '',
-    birthdate: contact.birthdate ? contact.birthdate.slice(0, 10) : '',
-    clientNotes: contact.clientNotes || '',
-    university: contact.university || '',
-    photoUrl: contact.photoUrl || '',
+    birthdate:    contact.birthdate    ? contact.birthdate.slice(0, 10)    : '',
+    clientNotes:  contact.clientNotes  || '',
+    university:   contact.university   || '',
+    photoUrl:     contact.photoUrl     || '',
   } : emptyForm)
-  const [saving, setSaving] = useState(false)
+
+  const [saving, setSaving]     = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [saveError, setSaveError] = useState('')
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
+  // ── Email list helpers ───────────────────────────────────────────────────
+  const setEmail = (i, val) =>
+    setForm((f) => { const e = [...f.emails]; e[i] = val; return { ...f, emails: e } })
+  const addEmail = () =>
+    setForm((f) => ({ ...f, emails: [...f.emails, ''] }))
+  const removeEmail = (i) =>
+    setForm((f) => ({ ...f, emails: f.emails.filter((_, idx) => idx !== i) }))
+
+  // ── Photo upload ─────────────────────────────────────────────────────────
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setSaveError('')
+    try {
+      const storageRef = ref(storage, `contact-photos/${Date.now()}_${file.name}`)
+      await uploadBytes(storageRef, file)
+      const url = await getDownloadURL(storageRef)
+      setForm((f) => ({ ...f, photoUrl: url }))
+    } catch (err) {
+      setSaveError('Image upload failed: ' + (err?.message ?? 'Unknown error'))
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     setSaveError('')
     try {
+      const cleanEmails = form.emails.map((e) => e.trim()).filter(Boolean)
       const data = {
         ...form,
-        nextFollowUp: form.nextFollowUp ? new Date(form.nextFollowUp).toISOString() : null,
+        email:         cleanEmails[0] || '',   // keep primary email field for backward compat
+        emails:        cleanEmails,
+        nextFollowUp:  form.nextFollowUp ? new Date(form.nextFollowUp).toISOString() : null,
       }
-      // 15-second timeout guard so the button never gets permanently stuck
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Save timed out — check your connection and try again.')), 15000)
       )
       await Promise.race([onSave(data), timeout])
-      // Auto-create company record if a company name was entered
       if (data.company?.trim()) ensureCompany(data.company)
       onClose()
     } catch (err) {
@@ -66,8 +107,6 @@ export default function ContactForm({ contact, onClose, onSave }) {
     }
   }
 
-  // If the contact's current relationship value isn't in the list, append it so it
-  // still shows correctly in the dropdown while editing.
   const relationshipList = (contact?.relationship && !relationshipOptions.includes(contact.relationship))
     ? [...relationshipOptions, contact.relationship]
     : relationshipOptions
@@ -75,21 +114,43 @@ export default function ContactForm({ contact, onClose, onSave }) {
   return (
     <Modal title={contact ? 'Edit Contact' : 'New Contact'} onClose={onClose} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Photo preview */}
+
+        {/* Photo */}
         <div className="flex items-center gap-4">
-          <Avatar firstName={form.firstName} lastName={form.lastName} size="lg" src={form.photoUrl} linkedin={form.linkedin} />
-          <div className="flex-1">
-            <label className="label">Photo URL <span className="text-gray-600 font-normal">(optional override)</span></label>
+          <div className="relative flex-shrink-0">
+            <Avatar firstName={form.firstName} lastName={form.lastName} size="lg" src={form.photoUrl} linkedin={form.linkedin} />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              title="Upload photo"
+              className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 hover:bg-blue-500 rounded-full flex items-center justify-center transition-colors disabled:opacity-50"
+            >
+              {uploading
+                ? <Loader2 size={11} className="text-white animate-spin" />
+                : <Camera size={11} className="text-white" />}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <label className="label">Photo URL <span className="text-gray-600 font-normal">(or upload above)</span></label>
             <input
               className="input text-xs"
-              placeholder="Auto-fetched from LinkedIn — paste URL to override"
+              placeholder="Paste URL to override"
               value={form.photoUrl}
               onChange={set('photoUrl')}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Name */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">First Name *</label>
             <input className="input" value={form.firstName} onChange={set('firstName')} required />
@@ -100,7 +161,8 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Company / Title */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Company</label>
             <input className="input" value={form.company} onChange={set('company')} />
@@ -111,7 +173,8 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Relationship / Interval */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Relationship</label>
             <select className="input" value={form.relationship} onChange={set('relationship')}>
@@ -128,12 +191,42 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         </div>
 
+        {/* Emails — dynamic list */}
         <div>
-          <label className="label">Email</label>
-          <input className="input" type="email" value={form.email} onChange={set('email')} />
+          <label className="label">Email(s)</label>
+          <div className="space-y-2">
+            {form.emails.map((email, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  className="input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(i, e.target.value)}
+                  placeholder={i === 0 ? 'Primary email' : 'Additional email'}
+                />
+                {i > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => removeEmail(i)}
+                    className="flex-shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addEmail}
+            className="mt-2 flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            <Plus size={12} /> Add another email
+          </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Phones */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Mobile Phone</label>
             <input className="input" value={form.mobilePhone} onChange={set('mobilePhone')} />
@@ -144,7 +237,8 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Location / Next Follow Up */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Location</label>
             <input className="input" value={form.location} onChange={set('location')} placeholder="City, State" />
@@ -155,7 +249,8 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Birthday / University */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Birthday</label>
             <input className="input" type="date" value={form.birthdate} onChange={set('birthdate')} />
@@ -166,12 +261,14 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         </div>
 
+        {/* Address */}
         <div>
           <label className="label">Address</label>
           <input className="input" value={form.address} onChange={set('address')} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* LinkedIn / Website */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">LinkedIn</label>
             <input className="input" value={form.linkedin} onChange={set('linkedin')} />
@@ -182,6 +279,7 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         </div>
 
+        {/* Notes */}
         <div>
           <label className="label">Client Notes</label>
           <textarea
@@ -200,7 +298,7 @@ export default function ContactForm({ contact, onClose, onSave }) {
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-          <button type="submit" className="btn-primary" disabled={saving}>
+          <button type="submit" className="btn-primary" disabled={saving || uploading}>
             {saving ? 'Saving...' : contact ? 'Save Changes' : 'Add Contact'}
           </button>
         </div>
