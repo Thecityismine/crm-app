@@ -11,7 +11,7 @@ const links = [
 
 export default function BottomNav() {
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-gray-900 border-t border-gray-800 flex safe-area-bottom">
+    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-gray-900 border-t border-gray-800 flex bottom-nav-safe">
       {links.map(({ to, icon: Icon, label }) => (
         <NavLink
           key={to}

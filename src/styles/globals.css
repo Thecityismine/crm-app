@@ -32,6 +32,11 @@
   }
 }
 
+/* iOS safe-area support for bottom nav */
+.bottom-nav-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* Leaflet popup dark theme overrides */
 .leaflet-popup-content-wrapper {
   background: #111827 !important;
