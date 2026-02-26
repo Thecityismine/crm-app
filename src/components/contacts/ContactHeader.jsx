@@ -4,31 +4,31 @@ import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import { Mail, Phone, MapPin, Linkedin, Globe, Edit2, Trash2 } from 'lucide-react'
 
 export default function ContactHeader({ contact, onEdit, onDelete }) {
+  // Collect all emails (new multi-email field or fallback to single email)
+  const emails = contact.emails?.length ? contact.emails : (contact.email ? [contact.email] : [])
+
   return (
-    <div className="card p-6 mb-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
+    <div className="card p-4 sm:p-6 mb-6">
+      {/* Top row: avatar + name + action buttons */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
           <Avatar
             firstName={contact.firstName}
             lastName={contact.lastName}
-            size="xl"
+            size="lg"
             src={contact.photoUrl}
             linkedin={contact.linkedin}
           />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-100">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-100 leading-tight">
               {contact.firstName} {contact.lastName}
             </h1>
             {contact.title && (
-              <p className="text-gray-400 mt-0.5">{contact.title}</p>
+              <p className="text-sm text-gray-400 mt-0.5 truncate">{contact.title}</p>
             )}
             {contact.company && (
-              <p className="text-gray-500 text-sm mt-0.5">{contact.company}</p>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">{contact.company}</p>
             )}
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {contact.relationship && <Badge label={contact.relationship} />}
-              <HealthScoreBadge contact={contact} />
-            </div>
           </div>
         </div>
 
@@ -48,13 +48,24 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5 pt-5 border-t border-gray-800">
-        {contact.email && (
-          <a href={`mailto:${contact.email}`} className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 truncate">
+      {/* Badges — own row so they never crowd the name */}
+      <div className="flex items-center gap-2 mt-3 flex-wrap">
+        {contact.relationship && <Badge label={contact.relationship} />}
+        <HealthScoreBadge contact={contact} />
+      </div>
+
+      {/* Contact links */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 mt-4 pt-4 border-t border-gray-800">
+        {emails.map((email, i) => (
+          <a
+            key={i}
+            href={`mailto:${email}`}
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 truncate"
+          >
             <Mail size={14} className="text-gray-600 flex-shrink-0" />
-            <span className="truncate">{contact.email}</span>
+            <span className="truncate">{email}</span>
           </a>
-        )}
+        ))}
         {contact.mobilePhone && (
           <a href={`tel:${contact.mobilePhone}`} className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200">
             <Phone size={14} className="text-gray-600 flex-shrink-0" />
@@ -68,7 +79,8 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
           </div>
         )}
         {contact.linkedin && (
-          <a href={contact.linkedin.startsWith('http') ? contact.linkedin : `https://${contact.linkedin}`}
+          <a
+            href={contact.linkedin.startsWith('http') ? contact.linkedin : `https://${contact.linkedin}`}
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 truncate"
           >
@@ -77,7 +89,8 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
           </a>
         )}
         {contact.website && (
-          <a href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`}
+          <a
+            href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`}
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 truncate"
           >
