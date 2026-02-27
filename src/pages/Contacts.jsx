@@ -2,18 +2,56 @@ import { useState } from 'react'
 import { useContacts, refreshContacts } from '@/hooks/useContacts'
 import { useContactStore } from '@/store/contactStore'
 import { useSettingsStore } from '@/store/settingsStore'
-import ContactCard from '@/components/contacts/ContactCard'
+import ContactCard, { ContactListRow } from '@/components/contacts/ContactCard'
 import ContactForm from '@/components/contacts/ContactForm'
 import ScanContactModal from '@/components/contacts/ScanContactModal'
 import CSVImportModal from '@/components/contacts/CSVImportModal'
 import { createContact } from '@/lib/firebase/contacts'
-import { Search, Plus, ScanLine, Users, FileUp } from 'lucide-react'
+import { getHealthScore } from '@/lib/healthScore'
+import { Search, Plus, ScanLine, Users, FileUp, LayoutGrid, List } from 'lucide-react'
+
+const SORT_OPTIONS = [
+  { value: 'name',           label: 'Name A–Z' },
+  { value: 'company',        label: 'Company' },
+  { value: 'last_contacted', label: 'Last Contacted' },
+  { value: 'health',         label: 'Health Score' },
+  { value: 'date_added',     label: 'Date Added' },
+]
+
+const HEALTH_ORDER = { cold: 0, overdue: 1, due_soon: 2, active: 3, unknown: 4 }
+
+function sortContacts(contacts, sortBy) {
+  return [...contacts].sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return `${a.lastName || ''} ${a.firstName || ''}`.localeCompare(`${b.lastName || ''} ${b.firstName || ''}`)
+      case 'company':
+        return (a.company || '').localeCompare(b.company || '')
+      case 'last_contacted': {
+        const ad = a.lastCommunication ? new Date(a.lastCommunication) : new Date(0)
+        const bd = b.lastCommunication ? new Date(b.lastCommunication) : new Date(0)
+        return bd - ad
+      }
+      case 'health': {
+        const as_ = HEALTH_ORDER[getHealthScore(a).score] ?? 4
+        const bs_ = HEALTH_ORDER[getHealthScore(b).score] ?? 4
+        return as_ - bs_
+      }
+      case 'date_added':
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      default:
+        return 0
+    }
+  })
+}
 
 export default function Contacts() {
   const { contacts } = useContacts()
   const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
   const [search, setSearch] = useState('')
   const [activeRel, setActiveRel] = useState('All')
+  const [sortBy, setSortBy] = useState('name')
+  const [viewMode, setViewMode] = useState('grid')
   const [showForm, setShowForm] = useState(false)
   const [showScan, setShowScan] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -27,19 +65,18 @@ export default function Contacts() {
     return matchesRel && matchesSearch
   })
 
+  const sorted = sortContacts(filtered, sortBy)
+
   const { addContact } = useContactStore()
 
   const handleCreate = async (data) => {
     const result = await createContact(data)
-    // Optimistic update — show immediately without waiting for onSnapshot
     if (result?.id) {
       addContact({ id: result.id, ...data, createdAt: new Date().toISOString() })
     }
-    // Also do a background REST refresh to get the canonical server data
     refreshContacts()
   }
 
-  // Called when user clicks "Review & Save" in the scan modal
   const handleScanExtracted = (extractedData) => {
     setScannedContact(extractedData)
     setShowForm(true)
@@ -93,7 +130,7 @@ export default function Contacts() {
       </div>
 
       {/* Relationship filter tabs */}
-      <div className="flex gap-1 mb-5 overflow-x-auto pb-1">
+      <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
         {['All', ...relationshipOptions].map((rel) => {
           const count = rel === 'All'
             ? contacts.length
@@ -114,13 +151,53 @@ export default function Contacts() {
         })}
       </div>
 
-      {/* Grid */}
-      {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {filtered.map((contact) => (
-            <ContactCard key={contact.id} contact={contact} />
+      {/* Sort + count + view toggle */}
+      <div className="flex items-center gap-3 mb-4">
+        <select
+          className="input w-auto text-xs py-1.5 pr-7"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
+        </select>
+        <span className="text-xs text-gray-600">
+          {sorted.length} contact{sorted.length !== 1 ? 's' : ''}
+        </span>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
+            title="Grid view"
+          >
+            <LayoutGrid size={15} />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
+            title="List view"
+          >
+            <List size={15} />
+          </button>
         </div>
+      </div>
+
+      {/* Contacts */}
+      {sorted.length > 0 ? (
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {sorted.map((contact) => (
+              <ContactCard key={contact.id} contact={contact} />
+            ))}
+          </div>
+        ) : (
+          <div className="card overflow-hidden">
+            {sorted.map((contact) => (
+              <ContactListRow key={contact.id} contact={contact} />
+            ))}
+          </div>
+        )
       ) : (
         <div className="flex flex-col items-center justify-center h-64 text-center">
           <Users size={36} className="text-gray-700 mb-3" />
@@ -136,7 +213,6 @@ export default function Contacts() {
         </div>
       )}
 
-      {/* CSV import modal */}
       {showImport && (
         <CSVImportModal
           onClose={() => setShowImport(false)}
@@ -144,7 +220,6 @@ export default function Contacts() {
         />
       )}
 
-      {/* Scan modal */}
       {showScan && (
         <ScanContactModal
           onClose={() => setShowScan(false)}
@@ -152,7 +227,6 @@ export default function Contacts() {
         />
       )}
 
-      {/* Contact form — pre-filled with scanned data if available */}
       {showForm && (
         <ContactForm
           contact={scannedContact}
