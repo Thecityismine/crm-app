@@ -12,7 +12,7 @@ const emptyForm = {
   firstName: '', lastName: '', company: '', title: '', relationship: '',
   emails: [''], mobilePhone: '', officePhone: '',
   location: '', address: '', linkedin: '', website: '', interval: '',
-  nextFollowUp: '', birthdate: '', clientNotes: '', university: '', photoUrl: '',
+  nextFollowUp: '', birthdate: '', weddingAnniversary: '', clientNotes: '', university: '', photoUrl: '',
 }
 
 function initEmails(contact) {
@@ -40,8 +40,9 @@ export default function ContactForm({ contact, onClose, onSave }) {
     website:      contact.website      || '',
     interval:     contact.interval     || '',
     nextFollowUp: contact.nextFollowUp ? contact.nextFollowUp.slice(0, 10) : '',
-    birthdate:    contact.birthdate    ? contact.birthdate.slice(0, 10)    : '',
-    clientNotes:  contact.clientNotes  || '',
+    birthdate:          contact.birthdate          ? contact.birthdate.slice(0, 10)          : '',
+    weddingAnniversary: contact.weddingAnniversary ? contact.weddingAnniversary.slice(0, 10) : '',
+    clientNotes:        contact.clientNotes        || '',
     university:   contact.university   || '',
     photoUrl:     contact.photoUrl     || '',
   } : emptyForm)
@@ -275,16 +276,22 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         </div>
 
-        {/* Birthday / University */}
+        {/* Birthday / Wedding Anniversary */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Birthday</label>
             <input className="input" type="date" value={form.birthdate} onChange={set('birthdate')} />
           </div>
           <div>
-            <label className="label">University</label>
-            <input className="input" value={form.university} onChange={set('university')} />
+            <label className="label">Wedding Anniversary</label>
+            <input className="input" type="date" value={form.weddingAnniversary} onChange={set('weddingAnniversary')} />
           </div>
+        </div>
+
+        {/* University */}
+        <div>
+          <label className="label">University</label>
+          <input className="input" value={form.university} onChange={set('university')} />
         </div>
 
         {/* Address */}
