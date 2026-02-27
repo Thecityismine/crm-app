@@ -4,14 +4,10 @@ import { Plus, Building2, Trash2, Edit2, Globe, Phone, MapPin, Users, FileText, 
 import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/lib/firebase/companies'
 import { getDeals } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import CompanyCard, { CompanyListRow } from '@/components/companies/CompanyCard'
 import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
-
-const INDUSTRIES = [
-  'Real Estate', 'Finance', 'Banking', 'Law', 'Consulting', 'Technology',
-  'Healthcare', 'Construction', 'Architecture', 'Insurance', 'Government', 'Other',
-]
 
 const OPEN_STAGES = new Set(['Lead', 'Qualified', 'Proposal', 'Negotiation'])
 
@@ -115,7 +111,7 @@ function CompanyPreviewModal({ company, companyContacts, dealCount, onClose, onE
 }
 
 // ── Edit / Add modal ───────────────────────────────────────────────────────
-function CompanyModal({ company, onClose, onSave, onDelete }) {
+function CompanyModal({ company, onClose, onSave, onDelete, industryOptions }) {
   const [form, setForm] = useState({
     name:     company?.name     || '',
     industry: company?.industry || '',
@@ -175,7 +171,7 @@ function CompanyModal({ company, onClose, onSave, onDelete }) {
               onChange={(e) => setForm((f) => ({ ...f, industry: e.target.value }))}
             >
               <option value="">— Select —</option>
-              {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
+              {industryOptions.map((i) => <option key={i} value={i}>{i}</option>)}
             </select>
           </div>
           <div>
@@ -252,6 +248,7 @@ function CompanyModal({ company, onClose, onSave, onDelete }) {
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function Companies() {
   const { contacts } = useContactStore()
+  const { industryOptions } = useSettingsStore()
   const [companies, setCompanies] = useState([])
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -480,6 +477,7 @@ export default function Companies() {
           onClose={() => setModal(null)}
           onSave={handleSave}
           onDelete={modal.mode === 'edit' ? handleDelete : undefined}
+          industryOptions={industryOptions}
         />
       )}
     </div>

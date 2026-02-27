@@ -173,7 +173,65 @@ function RelationshipOptions() {
   )
 }
 
-// ── 3. Pipeline Template ──────────────────────────────────────────────────────
+// ── 3. Industry Types ─────────────────────────────────────────────────────────
+function IndustryOptions() {
+  const { industryOptions, addIndustryOption, removeIndustryOption } = useSettingsStore()
+  const [newValue, setNewValue] = useState('')
+
+  const handleAdd = () => {
+    const trimmed = newValue.trim()
+    if (!trimmed || industryOptions.includes(trimmed)) return
+    addIndustryOption(trimmed)
+    setNewValue('')
+  }
+
+  return (
+    <div className="card p-5">
+      <h3 className="font-medium text-gray-200 mb-1">Industry Types</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Customize the options available in the Industry dropdown on company forms.
+      </p>
+      <div className="flex flex-wrap gap-2 mb-4">
+        {industryOptions.map((option) => (
+          <span
+            key={option}
+            className="flex items-center gap-1.5 px-3 py-1 bg-gray-800 border border-gray-700 rounded-full text-sm text-gray-300"
+          >
+            {option}
+            <button
+              onClick={() => removeIndustryOption(option)}
+              className="text-gray-600 hover:text-red-400 transition-colors"
+              aria-label={`Remove ${option}`}
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+        {industryOptions.length === 0 && (
+          <p className="text-sm text-gray-600">No options yet — add one below.</p>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input
+          className="input flex-1"
+          placeholder="e.g. Private Equity, Media, Retail..."
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+        />
+        <button
+          onClick={handleAdd}
+          disabled={!newValue.trim()}
+          className="btn-primary flex items-center gap-1.5 disabled:opacity-40"
+        >
+          <Plus size={14} /> Add
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── 5. Pipeline Template ──────────────────────────────────────────────────────
 const TEMPLATE_OPTIONS = [
   { value: 'default',     label: 'Default',     desc: 'Lead → Qualified → Proposal → Negotiation → Won / Lost' },
   { value: 'leasing',     label: 'Leasing',     desc: 'Prospect → Showing → Application → Lease Out → Closed / Lost' },
@@ -220,7 +278,7 @@ function PipelineSection() {
   )
 }
 
-// ── 4. Import Data ────────────────────────────────────────────────────────────
+// ── 6. Import Data ────────────────────────────────────────────────────────────
 function ImportSection({ onImport }) {
   const inputRef = useRef()
   const [preview,       setPreview]       = useState(null)
@@ -352,7 +410,7 @@ function ImportSection({ onImport }) {
   )
 }
 
-// ── 5. Export Data ────────────────────────────────────────────────────────────
+// ── 7. Export Data ────────────────────────────────────────────────────────────
 function ExportSection({ contacts }) {
   const [exporting, setExporting] = useState(null)
 
@@ -419,7 +477,7 @@ function ExportSection({ contacts }) {
   )
 }
 
-// ── 6. Notification Preferences ───────────────────────────────────────────────
+// ── 8. Notification Preferences ───────────────────────────────────────────────
 function NotificationsSection() {
   const { notificationPrefs, setNotificationPref } = useSettingsStore()
 
@@ -524,6 +582,10 @@ export default function Settings() {
 
       <Section label="Contacts">
         <RelationshipOptions />
+      </Section>
+
+      <Section label="Companies">
+        <IndustryOptions />
       </Section>
 
       <Section label="Pipeline">

@@ -7,6 +7,11 @@ const DEFAULT_RELATIONSHIPS = [
   'Consultant', 'Work Colleague', 'Doctor',
 ]
 
+const DEFAULT_INDUSTRIES = [
+  'Real Estate', 'Finance', 'Banking', 'Law', 'Consulting', 'Technology',
+  'Healthcare', 'Construction', 'Architecture', 'Insurance', 'Government', 'Other',
+]
+
 export const PIPELINE_TEMPLATES = {
   default:     ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'],
   leasing:     ['Prospect', 'Showing', 'Application', 'Lease Out', 'Closed', 'Lost'],
@@ -19,6 +24,7 @@ export const PIPELINE_TEMPLATES = {
 function settingsPayload(state) {
   return {
     relationshipOptions: state.relationshipOptions,
+    industryOptions:     state.industryOptions,
     pipelineTemplate:    state.pipelineTemplate,
     notificationPrefs:   state.notificationPrefs,
   }
@@ -28,6 +34,7 @@ export const useSettingsStore = create(
   persist(
     (set, get) => ({
       relationshipOptions: DEFAULT_RELATIONSHIPS,
+      industryOptions:     DEFAULT_INDUSTRIES,
       pipelineTemplate: 'default',
       notificationPrefs: {
         followUpReminders: true,
@@ -45,6 +52,7 @@ export const useSettingsStore = create(
         if (!data) return
         const update = {}
         if (data.relationshipOptions?.length) update.relationshipOptions = data.relationshipOptions
+        if (data.industryOptions?.length)     update.industryOptions     = data.industryOptions
         if (data.pipelineTemplate)            update.pipelineTemplate    = data.pipelineTemplate
         if (data.notificationPrefs)           update.notificationPrefs   = data.notificationPrefs
         if (Object.keys(update).length)       set(update)
@@ -62,6 +70,20 @@ export const useSettingsStore = create(
         const next = get().relationshipOptions.filter((r) => r !== label)
         set({ relationshipOptions: next })
         saveUserSettings(settingsPayload({ ...get(), relationshipOptions: next })).catch(console.error)
+      },
+
+      addIndustryOption: async (label) => {
+        const trimmed = label.trim()
+        if (!trimmed) return
+        const next = [...get().industryOptions, trimmed]
+        set({ industryOptions: next })
+        saveUserSettings(settingsPayload({ ...get(), industryOptions: next })).catch(console.error)
+      },
+
+      removeIndustryOption: async (label) => {
+        const next = get().industryOptions.filter((i) => i !== label)
+        set({ industryOptions: next })
+        saveUserSettings(settingsPayload({ ...get(), industryOptions: next })).catch(console.error)
       },
 
       setPipelineTemplate: async (template) => {

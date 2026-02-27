@@ -30,6 +30,11 @@ export async function loadUserSettings() {
     result.relationshipOptions = opts.map((v) => v.stringValue).filter(Boolean)
   }
 
+  const indOpts = fields.industryOptions?.arrayValue?.values
+  if (indOpts) {
+    result.industryOptions = indOpts.map((v) => v.stringValue).filter(Boolean)
+  }
+
   if (fields.pipelineTemplate?.stringValue) {
     result.pipelineTemplate = fields.pipelineTemplate.stringValue
   }
@@ -61,6 +66,15 @@ export async function saveUserSettings(settings) {
       },
     }
     fieldPaths.push('relationshipOptions')
+  }
+
+  if (settings.industryOptions) {
+    fields.industryOptions = {
+      arrayValue: {
+        values: settings.industryOptions.map((v) => ({ stringValue: v })),
+      },
+    }
+    fieldPaths.push('industryOptions')
   }
 
   if (settings.pipelineTemplate) {

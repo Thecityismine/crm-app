@@ -3,15 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getCompany, updateCompany, deleteCompany } from '@/lib/firebase/companies'
 import { getDeals } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { Globe, MapPin, Phone, ArrowLeft, Edit2, Trash2, Users, Briefcase, ExternalLink } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import Modal from '@/components/ui/Modal'
-
-const INDUSTRIES = [
-  'Real Estate', 'Finance', 'Banking', 'Law', 'Consulting', 'Technology',
-  'Healthcare', 'Construction', 'Architecture', 'Insurance', 'Government', 'Other',
-]
 
 const fmt = (n) =>
   n ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n) : null
@@ -34,7 +30,7 @@ function CompanyAvatar({ name }) {
   )
 }
 
-function EditModal({ company, onClose, onSave }) {
+function EditModal({ company, onClose, onSave, industryOptions }) {
   const [form, setForm] = useState({
     name:     company.name     || '',
     industry: company.industry || '',
@@ -74,7 +70,7 @@ function EditModal({ company, onClose, onSave }) {
             <label className="label">Industry</label>
             <select className="input" value={form.industry} onChange={(e) => setForm((f) => ({ ...f, industry: e.target.value }))}>
               <option value="">— Select —</option>
-              {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
+              {(industryOptions || []).map((i) => <option key={i} value={i}>{i}</option>)}
             </select>
           </div>
           <div>
@@ -107,6 +103,7 @@ export default function CompanyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { contacts } = useContactStore()
+  const { industryOptions } = useSettingsStore()
 
   const [company, setCompany] = useState(null)
   const [deals, setDeals] = useState([])
@@ -308,7 +305,7 @@ export default function CompanyDetail() {
       </div>
 
       {showEdit && (
-        <EditModal company={company} onClose={() => setShowEdit(false)} onSave={handleSave} />
+        <EditModal company={company} onClose={() => setShowEdit(false)} onSave={handleSave} industryOptions={industryOptions} />
       )}
     </div>
   )
