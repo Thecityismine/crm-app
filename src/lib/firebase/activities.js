@@ -64,6 +64,44 @@ export const getActivities = async (contactId, maxResults = 100) => {
     }))
 }
 
+// Fetch recent activities across ALL contacts via collection group query
+export const getRecentActivities = async (limit = 8) => {
+  const token = await getIdToken()
+  const pid = projectId()
+  const url = `https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents:runQuery`
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'activities', allDescendants: true }],
+        orderBy: [{ field: { fieldPath: 'occurredAt' }, direction: 'DESCENDING' }],
+        limit,
+      },
+    }),
+  })
+
+  if (!response.ok) {
+    const e = await response.json().catch(() => ({}))
+    throw new Error(e.error?.message || `Query failed (${response.status})`)
+  }
+
+  const rows = await response.json()
+  return rows
+    .filter((r) => r.document)
+    .map((r) => {
+      const parts = r.document.name.split('/')
+      const contactIdx = parts.indexOf('contacts')
+      const contactId = contactIdx !== -1 ? parts[contactIdx + 1] : null
+      return {
+        id: r.document.name.split('/').pop(),
+        contactId,
+        ...fromFields(r.document.fields || {}),
+      }
+    })
+}
+
 // Log a new activity under a contact
 export const logActivity = async (contactId, data) => {
   const token = await getIdToken()
