@@ -23,10 +23,17 @@ const HEALTH_ORDER = { cold: 0, overdue: 1, due_soon: 2, active: 3, unknown: 4 }
 function sortContacts(contacts, sortBy) {
   return [...contacts].sort((a, b) => {
     switch (sortBy) {
-      case 'name':
-        return `${a.lastName || ''} ${a.firstName || ''}`.localeCompare(`${b.lastName || ''} ${b.firstName || ''}`)
-      case 'company':
-        return (a.company || '').localeCompare(b.company || '')
+      case 'name': {
+        const nameKey = (c) => c.lastName?.trim()
+          ? `${c.lastName} ${c.firstName || ''}`
+          : (c.firstName || '')
+        return nameKey(a).localeCompare(nameKey(b), undefined, { sensitivity: 'base' })
+      }
+      case 'company': {
+        const ac = a.company?.trim() || '\uffff'  // push blanks to end
+        const bc = b.company?.trim() || '\uffff'
+        return ac.localeCompare(bc, undefined, { sensitivity: 'base' })
+      }
       case 'last_contacted': {
         const ad = a.lastCommunication ? new Date(a.lastCommunication) : new Date(0)
         const bd = b.lastCommunication ? new Date(b.lastCommunication) : new Date(0)
