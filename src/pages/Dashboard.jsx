@@ -40,17 +40,21 @@ const getUpcomingBirthdays = (contacts, daysAhead = 30) => {
   }).filter(Boolean).sort((a, b) => a.daysUntil - b.daysUntil)
 }
 
+const parseDueDate = (dateStr) => {
+  const [y, m, day] = dateStr.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, day) // local midnight
+}
+
 const isTaskToday = (dateStr) => {
   if (!dateStr) return false
-  const d = new Date(dateStr + 'T12:00:00')
+  const d = parseDueDate(dateStr)
   const t = new Date(); t.setHours(0, 0, 0, 0)
-  const end = new Date(t); end.setDate(end.getDate() + 1)
-  return d >= t && d < end
+  return d.getTime() === t.getTime()
 }
 
 const isTaskOverdue = (dateStr) => {
   if (!dateStr) return false
-  const d = new Date(dateStr + 'T12:00:00')
+  const d = parseDueDate(dateStr)
   const t = new Date(); t.setHours(0, 0, 0, 0)
   return d < t
 }

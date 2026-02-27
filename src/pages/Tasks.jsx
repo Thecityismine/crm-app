@@ -25,9 +25,10 @@ const PRIORITY_ORDER = ['urgent', 'high', 'medium', 'low']
 // ── Date helpers ─────────────────────────────────────────────────────────────
 function dateDiff(dateStr) {
   if (!dateStr) return null
-  const d = new Date(dateStr + 'T12:00:00')
-  const t = new Date(); t.setHours(0, 0, 0, 0)
-  return Math.round((d - t) / 86400000)
+  const [y, m, day] = dateStr.slice(0, 10).split('-').map(Number)
+  const d = new Date(y, m - 1, day)          // local midnight of due date
+  const t = new Date(); t.setHours(0, 0, 0, 0) // local midnight today
+  return Math.round((d - t) / 86400000)        // both midnights → exact integer
 }
 function isToday(dateStr)    { const d = dateDiff(dateStr); return d !== null && d === 0 }
 function isOverdue(dateStr)  { const d = dateDiff(dateStr); return d !== null && d < 0 }
