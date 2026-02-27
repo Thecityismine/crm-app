@@ -26,18 +26,18 @@ export default function QuickActionsMenu() {
         <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
       )}
 
-      {/* FAB cluster — sits above BottomNav on mobile */}
-      <div className="fixed right-5 bottom-20 sm:bottom-8 z-40 flex flex-col items-end gap-3">
-
-        {/* Speed-dial items */}
+      {/* Speed-dial items — pointer-events:none when closed so they never block scrolling */}
+      <div
+        className="fixed right-5 bottom-[5.5rem] sm:bottom-24 z-40 flex flex-col items-end gap-3"
+        style={{ pointerEvents: open ? 'auto' : 'none' }}
+      >
         {ACTIONS.map(({ type, label, Icon, color }, i) => (
           <div
             key={type}
             className="flex items-center gap-3 transition-all duration-200"
             style={{
-              opacity:    open ? 1 : 0,
-              transform:  open ? 'translateY(0)' : 'translateY(12px)',
-              pointerEvents: open ? 'auto' : 'none',
+              opacity:         open ? 1 : 0,
+              transform:       open ? 'translateY(0)' : 'translateY(12px)',
               transitionDelay: open ? `${i * 45}ms` : '0ms',
             }}
           >
@@ -52,8 +52,10 @@ export default function QuickActionsMenu() {
             </button>
           </div>
         ))}
+      </div>
 
-        {/* Main FAB */}
+      {/* Main FAB — always interactive, in its own fixed container */}
+      <div className="fixed right-5 bottom-20 sm:bottom-8 z-40">
         <button
           onClick={() => setOpen((o) => !o)}
           className={`w-12 h-12 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 ${
