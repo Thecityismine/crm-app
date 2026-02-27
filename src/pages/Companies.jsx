@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Building2, Trash2, Edit2, Globe, Phone, MapPin, Users, FileText } from 'lucide-react'
+import { Plus, Building2, Trash2, Edit2, Globe, Phone, MapPin, Users, FileText, Search, LayoutGrid, List, Briefcase } from 'lucide-react'
 import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/lib/firebase/companies'
+import { getDeals } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
-import CompanyCard from '@/components/companies/CompanyCard'
+import CompanyCard, { CompanyListRow } from '@/components/companies/CompanyCard'
 import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
 
@@ -12,7 +13,16 @@ const INDUSTRIES = [
   'Healthcare', 'Construction', 'Architecture', 'Insurance', 'Government', 'Other',
 ]
 
-function CompanyPreviewModal({ company, companyContacts, onClose, onEdit }) {
+const OPEN_STAGES = new Set(['Lead', 'Qualified', 'Proposal', 'Negotiation'])
+
+const SORT_OPTIONS = [
+  { value: 'name',     label: 'Name A–Z' },
+  { value: 'contacts', label: 'Most Contacts' },
+  { value: 'deals',    label: 'Most Deals' },
+]
+
+// ── Preview modal ──────────────────────────────────────────────────────────
+function CompanyPreviewModal({ company, companyContacts, dealCount, onClose, onEdit }) {
   const navigate = useNavigate()
 
   const handleContactClick = (contactId) => {
@@ -23,14 +33,19 @@ function CompanyPreviewModal({ company, companyContacts, onClose, onEdit }) {
   return (
     <Modal title={company.name} onClose={onClose}>
       <div className="space-y-4">
-        {/* Industry badge */}
-        {company.industry && (
-          <span className="inline-block text-xs bg-gray-800 border border-gray-700 text-gray-400 px-2.5 py-1 rounded-full">
-            {company.industry}
-          </span>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {company.industry && (
+            <span className="text-xs bg-gray-800 border border-gray-700 text-gray-400 px-2.5 py-1 rounded-full">
+              {company.industry}
+            </span>
+          )}
+          {dealCount > 0 && (
+            <span className="flex items-center gap-1 text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2.5 py-1 rounded-full">
+              <Briefcase size={11} /> {dealCount} open deal{dealCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
 
-        {/* Detail rows */}
         <div className="space-y-2.5">
           {company.phone && (
             <div className="flex items-center gap-3 text-sm text-gray-400">
@@ -66,7 +81,6 @@ function CompanyPreviewModal({ company, companyContacts, onClose, onEdit }) {
           )}
         </div>
 
-        {/* Contacts list */}
         {companyContacts.length > 0 && (
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -81,9 +95,7 @@ function CompanyPreviewModal({ company, companyContacts, onClose, onEdit }) {
                 >
                   <Avatar firstName={c.firstName} lastName={c.lastName} size="sm" src={c.photoUrl} linkedin={c.linkedin} />
                   <div className="min-w-0">
-                    <p className="text-sm text-gray-200 font-medium truncate">
-                      {c.firstName} {c.lastName}
-                    </p>
+                    <p className="text-sm text-gray-200 font-medium truncate">{c.firstName} {c.lastName}</p>
                     {c.title && <p className="text-xs text-gray-500 truncate">{c.title}</p>}
                   </div>
                 </button>
@@ -102,6 +114,7 @@ function CompanyPreviewModal({ company, companyContacts, onClose, onEdit }) {
   )
 }
 
+// ── Edit / Add modal ───────────────────────────────────────────────────────
 function CompanyModal({ company, onClose, onSave, onDelete }) {
   const [form, setForm] = useState({
     name:     company?.name     || '',
@@ -236,53 +249,79 @@ function CompanyModal({ company, onClose, onSave, onDelete }) {
   )
 }
 
+// ── Main page ──────────────────────────────────────────────────────────────
 export default function Companies() {
   const { contacts } = useContactStore()
   const [companies, setCompanies] = useState([])
+  const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [industryFilter, setIndustryFilter] = useState('All')
+  const [sortBy, setSortBy] = useState('name')
+  const [viewMode, setViewMode] = useState('grid')
   const [modal, setModal] = useState(null) // { mode: 'preview'|'edit'|'add', company? }
 
   useEffect(() => {
-    getCompanies()
-      .then(setCompanies)
-      .catch(console.warn)
-      .finally(() => setLoading(false))
+    getCompanies().then(setCompanies).catch(console.warn).finally(() => setLoading(false))
+    getDeals().then(setDeals).catch(console.warn)
   }, [])
 
-  // Count contacts per company name (case-insensitive)
+  // Contact counts per company name (case-insensitive)
   const contactCounts = useMemo(() => {
     const counts = {}
     contacts.forEach((c) => {
-      if (c.company) {
-        const key = c.company.toLowerCase()
-        counts[key] = (counts[key] || 0) + 1
-      }
+      if (c.company) counts[c.company.toLowerCase()] = (counts[c.company.toLowerCase()] || 0) + 1
     })
     return counts
   }, [contacts])
 
+  // Open deal counts per company (via contact's company field)
+  const dealCounts = useMemo(() => {
+    const counts = {}
+    deals.forEach((d) => {
+      if (!OPEN_STAGES.has(d.stage)) return
+      const contact = contacts.find((c) => c.id === d.contactId)
+      if (contact?.company) {
+        const key = contact.company.toLowerCase()
+        counts[key] = (counts[key] || 0) + 1
+      }
+    })
+    return counts
+  }, [deals, contacts])
+
+  // Unique industries for filter tabs
+  const industries = useMemo(() => {
+    const set = new Set(companies.map((c) => c.industry).filter(Boolean))
+    return [...set].sort()
+  }, [companies])
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return companies.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(q) ||
-        c.industry?.toLowerCase().includes(q) ||
-        c.location?.toLowerCase().includes(q)
+    let result = companies.filter((c) =>
+      (industryFilter === 'All' || c.industry === industryFilter) &&
+      (!q || c.name?.toLowerCase().includes(q) || c.industry?.toLowerCase().includes(q) || c.location?.toLowerCase().includes(q))
     )
-  }, [companies, search])
+    if (sortBy === 'contacts') {
+      result = [...result].sort((a, b) =>
+        (contactCounts[b.name?.toLowerCase()] || 0) - (contactCounts[a.name?.toLowerCase()] || 0)
+      )
+    } else if (sortBy === 'deals') {
+      result = [...result].sort((a, b) =>
+        (dealCounts[b.name?.toLowerCase()] || 0) - (dealCounts[a.name?.toLowerCase()] || 0)
+      )
+    } else {
+      result = [...result].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    }
+    return result
+  }, [companies, search, industryFilter, sortBy, contactCounts, dealCounts])
 
   const handleSave = async (data) => {
     if (modal.mode === 'add') {
       const { id } = await createCompany(data)
-      setCompanies((prev) =>
-        [...prev, { id, ...data }].sort((a, b) => a.name.localeCompare(b.name))
-      )
+      setCompanies((prev) => [...prev, { id, ...data }].sort((a, b) => a.name.localeCompare(b.name)))
     } else {
       await updateCompany(modal.company.id, data)
-      setCompanies((prev) =>
-        prev.map((c) => c.id === modal.company.id ? { ...c, ...data } : c)
-      )
+      setCompanies((prev) => prev.map((c) => c.id === modal.company.id ? { ...c, ...data } : c))
     }
     setModal(null)
   }
@@ -295,7 +334,8 @@ export default function Companies() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-2xl font-semibold text-gray-100">Companies</h1>
           <p className="text-gray-500 text-sm mt-0.5">{companies.length} companies</p>
@@ -310,15 +350,74 @@ export default function Companies() {
         </button>
       </div>
 
-      <div className="mb-5">
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input
-          className="input max-w-sm"
+          className="input pl-8"
           placeholder="Search by name, industry, location..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
+      {/* Industry filter tabs */}
+      {industries.length > 0 && (
+        <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+          {['All', ...industries].map((ind) => {
+            const count = ind === 'All'
+              ? companies.length
+              : companies.filter((c) => c.industry === ind).length
+            return (
+              <button
+                key={ind}
+                onClick={() => setIndustryFilter(ind)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                  industryFilter === ind
+                    ? 'bg-gray-700 text-gray-100'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
+                }`}
+              >
+                {ind} <span className="ml-1 text-gray-500">{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Sort + count + view toggle */}
+      <div className="flex items-center gap-3 mb-4">
+        <select
+          className="input w-auto text-xs py-1.5 pr-7"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <span className="text-xs text-gray-600">
+          {filtered.length} compan{filtered.length !== 1 ? 'ies' : 'y'}
+        </span>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
+            title="Grid view"
+          >
+            <LayoutGrid size={15} />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
+            title="List view"
+          >
+            <List size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20 text-gray-600 text-sm">
           Loading companies...
@@ -327,9 +426,9 @@ export default function Companies() {
         <div className="flex flex-col items-center py-16 text-center">
           <Building2 size={32} className="text-gray-700 mb-3" />
           <p className="text-sm text-gray-500">
-            {search ? 'No companies match your search' : 'No companies yet'}
+            {search || industryFilter !== 'All' ? 'No companies match your filter' : 'No companies yet'}
           </p>
-          {!search && (
+          {!search && industryFilter === 'All' && (
             <button
               onClick={() => setModal({ mode: 'add' })}
               className="mt-3 text-xs text-blue-400 hover:text-blue-300"
@@ -338,13 +437,26 @@ export default function Companies() {
             </button>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((company) => (
             <CompanyCard
               key={company.id}
               company={company}
               contactCount={contactCounts[company.name?.toLowerCase()] || 0}
+              dealCount={dealCounts[company.name?.toLowerCase()] || 0}
+              onClick={() => setModal({ mode: 'preview', company })}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="card overflow-hidden">
+          {filtered.map((company) => (
+            <CompanyListRow
+              key={company.id}
+              company={company}
+              contactCount={contactCounts[company.name?.toLowerCase()] || 0}
+              dealCount={dealCounts[company.name?.toLowerCase()] || 0}
               onClick={() => setModal({ mode: 'preview', company })}
             />
           ))}
@@ -357,6 +469,7 @@ export default function Companies() {
           companyContacts={contacts.filter(
             (c) => c.company?.toLowerCase() === modal.company.name?.toLowerCase()
           )}
+          dealCount={dealCounts[modal.company.name?.toLowerCase()] || 0}
           onClose={() => setModal(null)}
           onEdit={() => setModal({ mode: 'edit', company: modal.company })}
         />
