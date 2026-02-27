@@ -3,8 +3,7 @@ import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
 import { useSettingsStore } from '@/store/settingsStore'
 import { ensureCompany } from '@/lib/firebase/companies'
-import { storage } from '@/config/firebase'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { auth } from '@/config/firebase'
 import { AlertCircle, Camera, Loader2, Plus, X } from 'lucide-react'
 
 const INTERVALS = ['30 Days', '60 Days', '90 Days', '6 Months', '1 Year']
@@ -62,20 +61,36 @@ export default function ContactForm({ contact, onClose, onSave }) {
   const removeEmail = (i) =>
     setForm((f) => ({ ...f, emails: f.emails.filter((_, idx) => idx !== i) }))
 
-  // ── Photo upload ─────────────────────────────────────────────────────────
+  // ── Photo upload — uses Storage REST API (SDK hangs on this project setup) ──
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
     setUploadError('')
     try {
-      const storageRef = ref(storage, `contact-photos/${Date.now()}_${file.name}`)
-      const uploadTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Upload timed out. Check your connection or paste a photo URL instead.')), 20000)
+      const token   = await auth.currentUser.getIdToken()
+      const bucket  = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET
+      const path    = `contact-photos/${Date.now()}_${file.name}`
+      const encoded = encodeURIComponent(path)
+
+      const res = await fetch(
+        `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?uploadType=media&name=${encoded}`,
+        {
+          method:  'POST',
+          headers: {
+            Authorization:  `Bearer ${token}`,
+            'Content-Type': file.type || 'application/octet-stream',
+          },
+          body: file,
+        }
       )
-      await Promise.race([uploadBytes(storageRef, file), uploadTimeout])
-      const url = await getDownloadURL(storageRef)
-      setForm((f) => ({ ...f, photoUrl: url }))
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error?.message || `Upload failed (${res.status})`)
+      }
+      const data  = await res.json()
+      const dlUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encoded}?alt=media&token=${data.downloadTokens}`
+      setForm((f) => ({ ...f, photoUrl: dlUrl }))
     } catch (err) {
       setUploadError(err?.message ?? 'Photo upload failed. You can still save the contact.')
     } finally {
