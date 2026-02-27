@@ -20,14 +20,37 @@ const SORT_OPTIONS = [
 
 const HEALTH_ORDER = { cold: 0, overdue: 1, due_soon: 2, active: 3, unknown: 4 }
 
+// Known name suffixes to skip when finding the true family name
+const NAME_SUFFIXES = new Set([
+  'jr','sr','ii','iii','iv','v','ra','aia','pe','pmp','cpa','phd','md','esq','leed',
+])
+
+// Extract the true family name from a contact for sorting.
+// Handles middle initials ("Norman A. Glavas" → "Glavas"),
+// nicknames ("Gerald 'Jerry' Luczka" → "Luczka"),
+// suffixes ("Norman A. Glavas, RA" → "Glavas"), and
+// parenthetical nicknames ("Robert (Bob) Orban" → "Orban").
+function familyNameKey(c) {
+  const full  = `${c.firstName || ''} ${c.lastName || ''}`.trim()
+  const words = full.split(/\s+/).filter(Boolean)
+  if (!words.length) return ''
+  // Scan backwards to find the last real name word
+  for (let i = words.length - 1; i >= 0; i--) {
+    const alpha = words[i].replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '')
+    if (alpha.length > 1 && !NAME_SUFFIXES.has(alpha.toLowerCase())) {
+      return alpha  // strip punctuation, keep letters only
+    }
+  }
+  return words[0].replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '') || ''
+}
+
 function sortContacts(contacts, sortBy) {
   return [...contacts].sort((a, b) => {
     switch (sortBy) {
       case 'name': {
-        const nameKey = (c) => c.lastName?.trim()
-          ? `${c.lastName} ${c.firstName || ''}`
-          : (c.firstName || '')
-        return nameKey(a).localeCompare(nameKey(b), undefined, { sensitivity: 'base' })
+        const aKey = `${familyNameKey(a)} ${a.firstName || ''}`.trim()
+        const bKey = `${familyNameKey(b)} ${b.firstName || ''}`.trim()
+        return aKey.localeCompare(bKey, undefined, { sensitivity: 'base' })
       }
       case 'company': {
         const ac = a.company?.trim() || '\uffff'  // push blanks to end
