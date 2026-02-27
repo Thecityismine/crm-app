@@ -10,11 +10,15 @@ import {
 import KanbanColumn from './KanbanColumn'
 import KanbanCard from './KanbanCard'
 import { getDeals, updateDeal } from '@/lib/firebase/deals'
+import { useSettingsStore, PIPELINE_TEMPLATES } from '@/store/settingsStore'
 import { X } from 'lucide-react'
 
-export const PIPELINE_STAGES = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost']
+// Kept for backward-compat; consumers should prefer getPipelineStages() from the store
+export const PIPELINE_STAGES = PIPELINE_TEMPLATES.default
 
 export default function KanbanBoard({ onAddDeal, onDealClick, refreshKey }) {
+  const pipelineTemplate = useSettingsStore((s) => s.pipelineTemplate)
+  const stages = PIPELINE_TEMPLATES[pipelineTemplate] || PIPELINE_TEMPLATES.default
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeDeal, setActiveDeal] = useState(null)
@@ -66,7 +70,7 @@ export default function KanbanBoard({ onAddDeal, onDealClick, refreshKey }) {
     setActiveDeal(null)
     if (!over) return
     const newStage = over.id
-    if (!PIPELINE_STAGES.includes(newStage)) return
+    if (!stages.includes(newStage)) return
     const deal = deals.find((d) => d.id === active.id)
     if (!deal || deal.stage === newStage) return
 
@@ -128,7 +132,7 @@ export default function KanbanBoard({ onAddDeal, onDealClick, refreshKey }) {
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1">
-          {PIPELINE_STAGES.map((stage) => (
+          {stages.map((stage) => (
             <KanbanColumn
               key={stage}
               stage={stage}

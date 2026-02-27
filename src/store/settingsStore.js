@@ -7,17 +7,47 @@ const DEFAULT_RELATIONSHIPS = [
   'Consultant', 'Work Colleague', 'Doctor',
 ]
 
+export const PIPELINE_TEMPLATES = {
+  default:     ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'],
+  leasing:     ['Prospect', 'Showing', 'Application', 'Lease Out', 'Closed', 'Lost'],
+  acquisition: ['Sourcing', 'LOI', 'Due Diligence', 'Under Contract', 'Closed', 'Dead'],
+  development: ['Land', 'Entitlement', 'Design', 'Construction', 'Lease-Up', 'Completed'],
+  lending:     ['Inquiry', 'Term Sheet', 'Processing', 'Underwriting', 'Funded', 'Declined'],
+}
+
+// Extract only the serialisable settings (no functions)
+function settingsPayload(state) {
+  return {
+    relationshipOptions: state.relationshipOptions,
+    pipelineTemplate:    state.pipelineTemplate,
+    notificationPrefs:   state.notificationPrefs,
+  }
+}
+
 export const useSettingsStore = create(
   persist(
     (set, get) => ({
       relationshipOptions: DEFAULT_RELATIONSHIPS,
+      pipelineTemplate: 'default',
+      notificationPrefs: {
+        followUpReminders: true,
+        dealAlerts:        true,
+        weeklyDigest:      false,
+      },
+
+      // Returns the stage list for the currently selected template
+      getPipelineStages: () =>
+        PIPELINE_TEMPLATES[get().pipelineTemplate] || PIPELINE_TEMPLATES.default,
 
       // Fetch from Firestore and override localStorage — call on Settings mount
       syncFromFirestore: async () => {
         const data = await loadUserSettings().catch(() => null)
-        if (data?.relationshipOptions?.length) {
-          set({ relationshipOptions: data.relationshipOptions })
-        }
+        if (!data) return
+        const update = {}
+        if (data.relationshipOptions?.length) update.relationshipOptions = data.relationshipOptions
+        if (data.pipelineTemplate)            update.pipelineTemplate    = data.pipelineTemplate
+        if (data.notificationPrefs)           update.notificationPrefs   = data.notificationPrefs
+        if (Object.keys(update).length)       set(update)
       },
 
       addRelationshipOption: async (label) => {
@@ -25,13 +55,24 @@ export const useSettingsStore = create(
         if (!trimmed) return
         const next = [...get().relationshipOptions, trimmed]
         set({ relationshipOptions: next })
-        saveUserSettings({ relationshipOptions: next }).catch(console.error)
+        saveUserSettings(settingsPayload({ ...get(), relationshipOptions: next })).catch(console.error)
       },
 
       removeRelationshipOption: async (label) => {
         const next = get().relationshipOptions.filter((r) => r !== label)
         set({ relationshipOptions: next })
-        saveUserSettings({ relationshipOptions: next }).catch(console.error)
+        saveUserSettings(settingsPayload({ ...get(), relationshipOptions: next })).catch(console.error)
+      },
+
+      setPipelineTemplate: async (template) => {
+        set({ pipelineTemplate: template })
+        saveUserSettings(settingsPayload({ ...get(), pipelineTemplate: template })).catch(console.error)
+      },
+
+      setNotificationPref: async (key, value) => {
+        const next = { ...get().notificationPrefs, [key]: value }
+        set({ notificationPrefs: next })
+        saveUserSettings(settingsPayload({ ...get(), notificationPrefs: next })).catch(console.error)
       },
     }),
     { name: 'crm-settings' }
