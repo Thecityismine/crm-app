@@ -47,9 +47,10 @@ export default function ContactForm({ contact, onClose, onSave }) {
     photoUrl:     contact.photoUrl     || '',
   } : emptyForm)
 
-  const [saving, setSaving]     = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [saveError, setSaveError] = useState('')
+  const [saving,      setSaving]      = useState(false)
+  const [uploading,   setUploading]   = useState(false)
+  const [saveError,   setSaveError]   = useState('')
+  const [uploadError, setUploadError] = useState('')
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
@@ -66,14 +67,17 @@ export default function ContactForm({ contact, onClose, onSave }) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    setSaveError('')
+    setUploadError('')
     try {
       const storageRef = ref(storage, `contact-photos/${Date.now()}_${file.name}`)
-      await uploadBytes(storageRef, file)
+      const uploadTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Upload timed out. Check your connection or paste a photo URL instead.')), 20000)
+      )
+      await Promise.race([uploadBytes(storageRef, file), uploadTimeout])
       const url = await getDownloadURL(storageRef)
       setForm((f) => ({ ...f, photoUrl: url }))
     } catch (err) {
-      setSaveError('Image upload failed: ' + (err?.message ?? 'Unknown error'))
+      setUploadError(err?.message ?? 'Photo upload failed. You can still save the contact.')
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -148,6 +152,13 @@ export default function ContactForm({ contact, onClose, onSave }) {
             />
           </div>
         </div>
+
+        {uploadError && (
+          <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <AlertCircle size={14} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-yellow-400">{uploadError}</p>
+          </div>
+        )}
 
         {/* Name */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
