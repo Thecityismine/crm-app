@@ -48,8 +48,8 @@ function sortContacts(contacts, sortBy) {
   return [...contacts].sort((a, b) => {
     switch (sortBy) {
       case 'name': {
-        const aKey = `${familyNameKey(a)} ${a.firstName || ''}`.trim()
-        const bKey = `${familyNameKey(b)} ${b.firstName || ''}`.trim()
+        const aKey = `${a.firstName || ''} ${familyNameKey(a)}`.trim()
+        const bKey = `${b.firstName || ''} ${familyNameKey(b)}`.trim()
         return aKey.localeCompare(bKey, undefined, { sensitivity: 'base' })
       }
       case 'company': {
