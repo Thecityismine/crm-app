@@ -222,9 +222,9 @@ export default function Dashboard() {
 
   return (
     <div>
-      {/* Greeting */}
+      {/* Header */}
       <h1 className="text-2xl font-semibold text-gray-100 mb-0.5">
-        {getGreeting()}{firstName ? `, ${firstName}` : ''} — here's your day
+        Command Center
       </h1>
       <p className="text-gray-500 text-sm mb-6">
         {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
