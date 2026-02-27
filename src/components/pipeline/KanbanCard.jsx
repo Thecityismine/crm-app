@@ -1,6 +1,6 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { DollarSign, Calendar, User, GripVertical } from 'lucide-react'
+import { Calendar, User, GripVertical, Clock } from 'lucide-react'
 
 const formatValue = (v) => {
   if (!v) return null
@@ -20,6 +20,36 @@ const formatDate = (d) => {
   })
 }
 
+// Returns { color: 'red'|'yellow'|null, label: string|null }
+function getCloseMeta(closingDate) {
+  if (!closingDate) return { color: null, label: null }
+  const days = Math.round((new Date(closingDate + 'T12:00:00') - new Date()) / 86400000)
+  if (days < 0) return { color: 'red', label: 'Overdue' }
+  if (days === 0) return { color: 'red', label: 'Due today' }
+  if (days <= 7) return { color: 'yellow', label: `${days}d left` }
+  return { color: null, label: null }
+}
+
+function getDaysInStage(deal) {
+  const dateStr = deal.stageEnteredAt || deal.createdAt
+  if (!dateStr) return null
+  const days = Math.floor((Date.now() - new Date(dateStr)) / 86400000)
+  if (days === 0) return 'Today'
+  if (days === 1) return '1 day'
+  return `${days} days`
+}
+
+// Full class strings so Tailwind JIT picks them up
+const URGENCY_BORDER = {
+  red:    'border-l-2 border-l-red-500',
+  yellow: 'border-l-2 border-l-yellow-500',
+}
+
+const DATE_COLOR = {
+  red:    'text-red-400',
+  yellow: 'text-yellow-400',
+}
+
 export default function KanbanCard({ deal, onClick }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: deal.id,
@@ -30,16 +60,15 @@ export default function KanbanCard({ deal, onClick }) {
     opacity: isDragging ? 0.4 : 1,
   }
 
-  const isClosingSoon = deal.closingDate && (() => {
-    const days = Math.round((new Date(deal.closingDate + 'T12:00:00') - new Date()) / 86400000)
-    return days >= 0 && days <= 14
-  })()
+  const closeMeta = getCloseMeta(deal.closingDate)
+  const daysInStage = getDaysInStage(deal)
+  const urgencyBorder = closeMeta.color ? URGENCY_BORDER[closeMeta.color] : ''
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-gray-900 border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-gray-700 transition-colors"
+      className={`bg-gray-900 border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-gray-700 transition-colors ${urgencyBorder}`}
       onClick={onClick}
     >
       <div className="flex items-start gap-2">
@@ -67,12 +96,22 @@ export default function KanbanCard({ deal, onClick }) {
               </div>
             )}
             {deal.closingDate && (
-              <div className={`flex items-center gap-1.5 text-xs ${isClosingSoon ? 'text-amber-400' : 'text-gray-500'}`}>
+              <div className={`flex items-center gap-1.5 text-xs ${closeMeta.color ? DATE_COLOR[closeMeta.color] : 'text-gray-500'}`}>
                 <Calendar size={10} className="flex-shrink-0" />
-                {formatDate(deal.closingDate)}
+                <span>{formatDate(deal.closingDate)}</span>
+                {closeMeta.label && (
+                  <span className="font-semibold">· {closeMeta.label}</span>
+                )}
               </div>
             )}
           </div>
+
+          {daysInStage && (
+            <div className="mt-2 flex items-center gap-1 text-xs text-gray-700">
+              <Clock size={9} className="flex-shrink-0" />
+              {daysInStage} in stage
+            </div>
+          )}
         </div>
       </div>
     </div>

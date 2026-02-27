@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import KanbanCard from './KanbanCard'
-import { Plus } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const formatTotal = (v) => {
   if (!v) return null
@@ -18,16 +18,46 @@ const STAGE_COLORS = {
   Lost:        'border-red-500/40',
 }
 
-export default function KanbanColumn({ stage, deals, onCardClick, onAddDeal }) {
+export default function KanbanColumn({ stage, deals, onCardClick, onAddDeal, collapsed, onToggleCollapse }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
   const total = deals.reduce((sum, d) => sum + (Number(d.value) || 0), 0)
   const accentBorder = STAGE_COLORS[stage] || 'border-gray-700'
+
+  if (collapsed) {
+    return (
+      <div
+        className="flex-shrink-0 w-10 flex flex-col items-center gap-3 py-3 rounded-xl bg-gray-800/20 cursor-pointer hover:bg-gray-800/40 transition-colors"
+        onClick={onToggleCollapse}
+        title={`${stage} — ${deals.length} deal${deals.length !== 1 ? 's' : ''} (click to expand)`}
+      >
+        <ChevronRight size={13} className="text-gray-600 flex-shrink-0" />
+        <span
+          className="text-xs font-semibold text-gray-600 uppercase tracking-wide select-none"
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+        >
+          {stage}
+        </span>
+        {deals.length > 0 && (
+          <span className="text-xs text-gray-700 bg-gray-800 px-1.5 py-0.5 rounded-full font-medium">
+            {deals.length}
+          </span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="flex-shrink-0 w-60 flex flex-col">
       {/* Column header */}
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-2">
+          <button
+            onClick={onToggleCollapse}
+            className="text-gray-700 hover:text-gray-400 transition-colors flex-shrink-0"
+            title="Collapse column"
+          >
+            <ChevronLeft size={13} />
+          </button>
           <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">{stage}</span>
           <span className="text-xs text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded-full font-medium">
             {deals.length}
