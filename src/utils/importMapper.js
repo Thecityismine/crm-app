@@ -12,7 +12,7 @@ const MONTH_MAP = {
 //   "16-Sep-89"  "3-Feb-18"  "19-May-24"   (Notion short export)
 //   "March 28, 2025 12:53 PM"              (Notion long datetime)
 //   "2025-03-28"                           (already ISO)
-const parseDateOnly = (str) => {
+export const parseDateOnly = (str) => {
   if (!str || str.trim() === '' || str === '—') return ''
   str = str.trim().replace(/\s+/g, ' ')
 

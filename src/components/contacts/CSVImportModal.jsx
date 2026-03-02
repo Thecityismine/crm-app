@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import Modal from '@/components/ui/Modal'
 import { createContact } from '@/lib/firebase/contacts'
+import { parseDateOnly } from '@/utils/importMapper'
 import { Upload, FileText, CheckCircle, AlertCircle, ChevronRight } from 'lucide-react'
 
 // ── Contact fields available for mapping ───────────────────────────────────
@@ -20,8 +21,9 @@ const CONTACT_FIELDS = [
   { value: 'instagram',   label: 'Instagram' },
   { value: 'website',     label: 'Website' },
   { value: 'relationship',label: 'Relationship' },
-  { value: 'birthdate',   label: 'Birthday' },
-  { value: 'university',  label: 'University' },
+  { value: 'birthdate',          label: 'Birthday' },
+  { value: 'weddingAnniversary', label: 'Wedding Anniversary' },
+  { value: 'university',         label: 'University' },
   { value: 'clientNotes', label: 'Notes' },
   { value: 'nextFollowUp',label: 'Next Follow Up' },
 ]
@@ -47,6 +49,7 @@ const AUTO_MAP = {
   'website': 'website', 'web site': 'website', 'url': 'website', 'web': 'website', 'homepage': 'website',
   'relationship': 'relationship', 'type': 'relationship', 'contact type': 'relationship',
   'birthday': 'birthdate', 'birth date': 'birthdate', 'birthdate': 'birthdate', 'dob': 'birthdate', 'date of birth': 'birthdate',
+  'wedding anniversary': 'weddingAnniversary', 'anniversary': 'weddingAnniversary', 'wedding date': 'weddingAnniversary',
   'university': 'university', 'school': 'university', 'education': 'university', 'college': 'university',
   'notes': 'clientNotes', 'client notes': 'clientNotes', 'comments': 'clientNotes', 'description': 'clientNotes',
   'next follow up': 'nextFollowUp', 'follow up': 'nextFollowUp', 'follow-up': 'nextFollowUp', 'follow up date': 'nextFollowUp',
@@ -99,6 +102,12 @@ function buildContact(row, headers, mapping) {
     if (!value) return
     contact[field] = value
   })
+  // Parse date fields → YYYY-MM-DD (handles "3-Feb-18", ISO, etc.)
+  const DATE_FIELDS = ['birthdate', 'weddingAnniversary']
+  DATE_FIELDS.forEach((f) => {
+    if (contact[f]) contact[f] = parseDateOnly(contact[f]) || ''
+  })
+
   // Split fullName → firstName + lastName
   if (contact.fullName) {
     const parts = contact.fullName.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().split(/\s+/)
