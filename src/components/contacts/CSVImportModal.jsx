@@ -6,6 +6,7 @@ import { Upload, FileText, CheckCircle, AlertCircle, ChevronRight } from 'lucide
 // ── Contact fields available for mapping ───────────────────────────────────
 const CONTACT_FIELDS = [
   { value: '',             label: '— Skip —' },
+  { value: 'fullName',    label: 'Full Name (auto-split)' },
   { value: 'firstName',   label: 'First Name' },
   { value: 'lastName',    label: 'Last Name' },
   { value: 'email',       label: 'Email' },
@@ -26,8 +27,12 @@ const CONTACT_FIELDS = [
 
 // Auto-detect common CSV header names → contact fields
 const AUTO_MAP = {
+  // Full name (Notion exports a single "Contact Name" column)
+  'contact name': 'fullName', 'name': 'fullName', 'full name': 'fullName', 'fullname': 'fullName',
+  // Split name
   'first name': 'firstName', 'firstname': 'firstName', 'first_name': 'firstName', 'given name': 'firstName',
   'last name': 'lastName',  'lastname': 'lastName',  'last_name': 'lastName',  'surname': 'lastName', 'family name': 'lastName',
+  // Contact info
   'email': 'email', 'email address': 'email', 'e-mail': 'email', 'e mail': 'email',
   'phone': 'mobilePhone', 'mobile': 'mobilePhone', 'cell': 'mobilePhone',
   'mobile phone': 'mobilePhone', 'cell phone': 'mobilePhone', 'phone number': 'mobilePhone',
@@ -37,7 +42,7 @@ const AUTO_MAP = {
   'location': 'location', 'city': 'location', 'city/state': 'location', 'city, state': 'location',
   'address': 'address', 'street address': 'address',
   'linkedin': 'linkedin', 'linkedin url': 'linkedin', 'linkedin profile': 'linkedin',
-  'website': 'website', 'url': 'website', 'web': 'website', 'homepage': 'website',
+  'website': 'website', 'web site': 'website', 'url': 'website', 'web': 'website', 'homepage': 'website',
   'relationship': 'relationship', 'type': 'relationship', 'contact type': 'relationship',
   'birthday': 'birthdate', 'birth date': 'birthdate', 'birthdate': 'birthdate', 'dob': 'birthdate', 'date of birth': 'birthdate',
   'university': 'university', 'school': 'university', 'education': 'university', 'college': 'university',
@@ -45,35 +50,38 @@ const AUTO_MAP = {
   'next follow up': 'nextFollowUp', 'follow up': 'nextFollowUp', 'follow-up': 'nextFollowUp', 'follow up date': 'nextFollowUp',
 }
 
-// ── Simple CSV parser (handles quoted fields with commas) ──────────────────
+// ── CSV parser — character-by-character to handle multi-line quoted fields ──
 function parseCSV(text) {
-  const lines = text.split(/\r?\n/)
-  const nonEmpty = lines.filter((l) => l.trim())
-  if (nonEmpty.length === 0) return { headers: [], rows: [] }
+  const src  = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const rows = []
+  let row    = []
+  let field  = ''
+  let quoted = false
 
-  const parseRow = (line) => {
-    const result = []
-    let current = ''
-    let inQuotes = false
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i]
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') { current += '"'; i++ }
-        else inQuotes = !inQuotes
-      } else if (ch === ',' && !inQuotes) {
-        result.push(current.trim())
-        current = ''
-      } else {
-        current += ch
-      }
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i]
+    if (ch === '"') {
+      if (quoted && src[i + 1] === '"') { field += '"'; i++ }
+      else { quoted = !quoted }
+    } else if (ch === ',' && !quoted) {
+      row.push(field.trim()); field = ''
+    } else if (ch === '\n' && !quoted) {
+      row.push(field.trim()); field = ''
+      if (row.some((f) => f !== '')) rows.push(row)
+      row = []
+    } else {
+      field += ch
     }
-    result.push(current.trim())
-    return result
   }
+  // trailing field / row
+  row.push(field.trim())
+  if (row.some((f) => f !== '')) rows.push(row)
 
-  const headers = parseRow(nonEmpty[0])
-  const rows = nonEmpty.slice(1).map(parseRow)
-  return { headers, rows }
+  if (rows.length < 2) return { headers: [], rows: [] }
+
+  // Strip BOM from first header
+  const headers = rows[0].map((h, i) => (i === 0 ? h.replace(/^\uFEFF/, '') : h))
+  return { headers, rows: rows.slice(1) }
 }
 
 function autoDetect(headers) {
@@ -89,6 +97,13 @@ function buildContact(row, headers, mapping) {
     if (!value) return
     contact[field] = value
   })
+  // Split fullName → firstName + lastName
+  if (contact.fullName) {
+    const parts = contact.fullName.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().split(/\s+/)
+    if (!contact.firstName) contact.firstName = parts[0] || ''
+    if (!contact.lastName)  contact.lastName  = parts.slice(1).join(' ')
+    delete contact.fullName
+  }
   // Normalize email → emails array for multi-email support
   if (contact.email) {
     contact.emails = [contact.email]
@@ -134,14 +149,14 @@ export default function CSVImportModal({ onClose, onImported }) {
   }
 
   const canImport = () => {
-    // Need at least firstName or lastName mapped
-    return mapping.some((f) => f === 'firstName' || f === 'lastName')
+    // Need at least firstName, lastName, or fullName mapped
+    return mapping.some((f) => f === 'firstName' || f === 'lastName' || f === 'fullName')
   }
 
   const handleImport = async () => {
     const contacts = parsed.rows
       .map((row) => buildContact(row, parsed.headers, mapping))
-      .filter((c) => c.firstName || c.lastName) // skip blank rows
+      .filter((c) => c.firstName || c.lastName)  // skip blank rows
 
     if (contacts.length === 0) {
       setError('No valid contacts found. Make sure First Name or Last Name is mapped.')
