@@ -141,6 +141,7 @@ export const mapCSVRowToContact = (row) => {
     address:           cleanAddress(row['Address'] || ''),
     interval:          (row['Interval'] || '').trim(),
     linkedin:          (row['Linkedin'] || '').trim(),
+    instagram:         (row['Instagram'] || row['Instagram Profile'] || '').trim(),
     website:           (row['Web Site'] || '').trim(),
     university:        (row['University'] || '').trim(),
     clientNotes:       (row['Client Notes'] || '').trim(),

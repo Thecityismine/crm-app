@@ -1,7 +1,7 @@
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
-import { Mail, Phone, MapPin, Linkedin, Globe, Edit2, Trash2 } from 'lucide-react'
+import { Mail, Phone, MapPin, Linkedin, Instagram, Globe, Edit2, Trash2 } from 'lucide-react'
 
 export default function ContactHeader({ contact, onEdit, onDelete }) {
   // Collect all emails (new multi-email field or fallback to single email)
@@ -88,6 +88,16 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
           >
             <Linkedin size={14} className="text-gray-600 flex-shrink-0" />
             <span className="truncate">LinkedIn</span>
+          </a>
+        )}
+        {contact.instagram && (
+          <a
+            href={contact.instagram.startsWith('http') ? contact.instagram : `https://instagram.com/${contact.instagram.replace(/^@/, '')}`}
+            target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 truncate"
+          >
+            <Instagram size={14} className="text-gray-600 flex-shrink-0" />
+            <span className="truncate">Instagram</span>
           </a>
         )}
         {contact.website && (

@@ -11,7 +11,7 @@ const INTERVALS = ['30 Days', '60 Days', '90 Days', '6 Months', '1 Year']
 const emptyForm = {
   firstName: '', lastName: '', company: '', title: '', relationship: '',
   emails: [''], mobilePhone: '', officePhone: '',
-  location: '', address: '', linkedin: '', website: '', interval: '',
+  location: '', address: '', linkedin: '', instagram: '', website: '', interval: '',
   nextFollowUp: '', birthdate: '', weddingAnniversary: '', clientNotes: '', university: '', photoUrl: '',
 }
 
@@ -37,6 +37,7 @@ export default function ContactForm({ contact, onClose, onSave }) {
     location:     contact.location     || '',
     address:      contact.address      || '',
     linkedin:     contact.linkedin     || '',
+    instagram:    contact.instagram    || '',
     website:      contact.website      || '',
     interval:     contact.interval     || '',
     nextFollowUp: contact.nextFollowUp ? contact.nextFollowUp.slice(0, 10) : '',
@@ -300,11 +301,15 @@ export default function ContactForm({ contact, onClose, onSave }) {
           <input className="input" value={form.address} onChange={set('address')} />
         </div>
 
-        {/* LinkedIn / Website */}
+        {/* LinkedIn / Instagram / Website */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">LinkedIn</label>
             <input className="input" value={form.linkedin} onChange={set('linkedin')} />
+          </div>
+          <div>
+            <label className="label">Instagram</label>
+            <input className="input" placeholder="@username or URL" value={form.instagram} onChange={set('instagram')} />
           </div>
           <div>
             <label className="label">Website</label>
