@@ -75,6 +75,8 @@ function sortContacts(contacts, sortBy) {
   })
 }
 
+const PINNED_RELS = ['Architect', 'MEP Engineer', 'Contractor']
+
 export default function Contacts() {
   const { contacts } = useContacts()
   const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
@@ -161,7 +163,7 @@ export default function Contacts() {
 
       {/* Relationship filter tabs */}
       <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-        {['All', ...relationshipOptions].map((rel) => {
+        {['All', ...PINNED_RELS.filter(p => relationshipOptions.includes(p)), ...relationshipOptions.filter(r => !PINNED_RELS.includes(r))].map((rel) => {
           const count = rel === 'All'
             ? contacts.length
             : contacts.filter((c) => c.relationship === rel).length

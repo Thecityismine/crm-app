@@ -286,10 +286,15 @@ export default function Companies() {
     return counts
   }, [deals, contacts])
 
-  // Unique industries for filter tabs
+  // Unique industries for filter tabs — pinned types always first
+  const PINNED_INDUSTRIES = ['Architect', 'MEP Engineer', 'Contractor']
   const industries = useMemo(() => {
     const set = new Set(companies.map((c) => c.industry).filter(Boolean))
-    return [...set].sort()
+    const all = [...set]
+    return [
+      ...PINNED_INDUSTRIES.filter(p => all.includes(p)),
+      ...all.filter(i => !PINNED_INDUSTRIES.includes(i)).sort(),
+    ]
   }, [companies])
 
   const filtered = useMemo(() => {

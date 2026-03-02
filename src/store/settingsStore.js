@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import { loadUserSettings, saveUserSettings } from '@/lib/firebase/userSettings'
 
 const DEFAULT_RELATIONSHIPS = [
-  'Architect', 'Engineer', 'Contractor', 'Friend', 'Family',
+  'Architect', 'MEP Engineer', 'Contractor', 'Engineer', 'Friend', 'Family',
   'Consultant', 'Work Colleague', 'Doctor',
 ]
 
