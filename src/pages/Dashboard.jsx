@@ -8,9 +8,7 @@ import { refreshContacts } from '@/hooks/useContacts'
 import { getTasks, updateTask } from '@/lib/firebase/tasks'
 import { getDeals } from '@/lib/firebase/deals'
 import { getHealthScore, getNeedsAttention } from '@/lib/healthScore'
-import { auth } from '@/config/firebase'
 import Avatar from '@/components/ui/Avatar'
-import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import LogActivityModal from '@/components/activities/LogActivityModal'
 import {
   Cake, AlertTriangle, Phone, Users, CheckSquare, ArrowRight,
@@ -42,7 +40,7 @@ const getUpcomingBirthdays = (contacts, daysAhead = 30) => {
 
 const parseDueDate = (dateStr) => {
   const [y, m, day] = dateStr.slice(0, 10).split('-').map(Number)
-  return new Date(y, m - 1, day) // local midnight
+  return new Date(y, m - 1, day)
 }
 
 const isTaskToday = (dateStr) => {
@@ -77,13 +75,6 @@ const fmtRelative = (iso) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-const getGreeting = () => {
-  const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 17) return 'Good afternoon'
-  return 'Good evening'
-}
-
 const ACTIVITY_META = {
   call:    { label: 'Call',    Icon: Phone,         color: 'text-green-400' },
   email:   { label: 'Email',   Icon: Mail,          color: 'text-blue-400' },
@@ -94,8 +85,25 @@ const ACTIVITY_META = {
 
 const OPEN_STAGES = new Set(['Lead', 'Qualified', 'Proposal', 'Negotiation'])
 
+function getPriority(score) {
+  if (score === 'cold')     return { label: 'High', className: 'text-red-400 bg-red-400/10 border border-red-400/20' }
+  if (score === 'overdue')  return { label: 'Med',  className: 'text-orange-400 bg-orange-400/10 border border-orange-400/20' }
+  return                           { label: 'Low',  className: 'text-yellow-500 bg-yellow-500/10 border border-yellow-500/20' }
+}
+
+function getAttentionReason(contact) {
+  const health = contact._health || getHealthScore(contact)
+  if (contact.lastCommunication) {
+    const days = Math.round((Date.now() - new Date(contact.lastCommunication)) / 86400000)
+    if (days >= 0) return `No contact in ${days}d`
+  }
+  if (health.daysOverdue > 0) return `${health.daysOverdue}d overdue`
+  if (health.score === 'due_soon') return 'Follow-up due soon'
+  return 'Needs attention'
+}
+
 // ── sub-components ─────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, color = 'text-gray-100', icon: Icon, iconColor }) {
+function StatCard({ label, value, sub, color = 'text-gray-100', subColor, icon: Icon, iconColor }) {
   return (
     <div className="card p-4">
       <div className="flex items-start justify-between mb-1">
@@ -103,7 +111,7 @@ function StatCard({ label, value, sub, color = 'text-gray-100', icon: Icon, icon
         {Icon && <Icon size={14} className={iconColor || 'text-gray-600'} />}
       </div>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-600 mt-0.5">{sub}</p>}
+      {sub && <p className={`text-xs mt-0.5 ${subColor || 'text-gray-600'}`}>{sub}</p>}
     </div>
   )
 }
@@ -130,26 +138,32 @@ function BirthdayCard({ contact }) {
 
 function NeedsAttentionRow({ contact, onLog }) {
   const navigate = useNavigate()
-  const health = getHealthScore(contact)
-  const overdueLabel = () => {
-    const d = Math.abs(contact._health?.daysOverdue ?? health.daysOverdue)
-    if (health.score === 'due_soon') return d === 0 ? 'Due today' : `Due in ${d}d`
-    return `${d}d overdue`
-  }
+  const health = contact._health || getHealthScore(contact)
+  const priority = getPriority(health.score)
+  const reason = getAttentionReason(contact)
+
   return (
     <div className="flex items-center gap-3 py-3 border-b border-gray-800/60 last:border-0">
-      <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/contacts/${contact.id}`)}>
+      <div
+        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+        onClick={() => navigate(`/contacts/${contact.id}`)}
+      >
         <Avatar firstName={contact.firstName} lastName={contact.lastName} size="sm" src={contact.photoUrl} linkedin={contact.linkedin} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-gray-200 truncate">{contact.firstName} {contact.lastName}</p>
-          {contact.company && <p className="text-xs text-gray-500 truncate">{contact.company}</p>}
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-sm text-gray-200 truncate">{contact.firstName} {contact.lastName}</p>
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 ${priority.className}`}>
+              {priority.label}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 truncate mt-0.5">
+            {reason}{contact.company ? ` · ${contact.company}` : ''}
+          </p>
         </div>
       </div>
-      <HealthScoreBadge contact={contact} />
-      <span className="text-xs text-gray-500 w-20 text-right flex-shrink-0">{overdueLabel()}</span>
       <button
         onClick={(e) => { e.stopPropagation(); onLog(contact) }}
-        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 border border-blue-500/30 hover:border-blue-400/50 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
+        className="flex items-center gap-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 shadow-sm"
       >
         <Phone size={11} /> Log
       </button>
@@ -162,7 +176,11 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { contacts } = useContacts()
   const upcoming = getUpcomingBirthdays(contacts, 30)
-  const needsAttention = getNeedsAttention(contacts).slice(0, 8)
+
+  const allNeedsAttention = getNeedsAttention(contacts)
+  const needsAttention = allNeedsAttention.slice(0, 8)
+  const coldCount = allNeedsAttention.filter(c => ['cold', 'overdue'].includes(c._health.score)).length
+  const highPriorityCount = allNeedsAttention.filter(c => c._health.score === 'cold').length
 
   const [loggingContact, setLoggingContact] = useState(null)
   const [tasks, setTasks] = useState([])
@@ -190,9 +208,15 @@ export default function Dashboard() {
   // Computed
   const openTasks = tasks.filter((t) => t.status !== 'completed')
   const tasksDueToday = openTasks.filter((t) => isTaskOverdue(t.dueDate) || isTaskToday(t.dueDate))
+  const overdueTasksCount = openTasks.filter((t) => isTaskOverdue(t.dueDate)).length
   const openDeals = deals.filter((d) => OPEN_STAGES.has(d.stage))
   const pipelineValue = openDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0)
-  const coldCount = contacts.filter((c) => ['cold', 'overdue'].includes(getHealthScore(c).score)).length
+
+  const newThisMonth = contacts.filter(c => {
+    if (!c.createdAt) return false
+    const d = new Date(c.createdAt), now = new Date()
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }).length
 
   const displayTasks = [...openTasks].sort((a, b) => {
     const aOver = isTaskOverdue(a.dueDate), bOver = isTaskOverdue(b.dueDate)
@@ -222,30 +246,46 @@ export default function Dashboard() {
     try { await updateTask(task.id, { status: 'completed' }) } catch { /* silent */ }
   }
 
-  const firstName = auth.currentUser?.displayName?.split(' ')[0] || ''
-
   return (
     <div>
       {/* Header */}
-      <h1 className="text-2xl font-semibold text-gray-100 mb-0.5">
-        Command Center
-      </h1>
-      <p className="text-gray-500 text-sm mb-6">
-        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-      </p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-gray-100 mb-0.5">Command Center</h1>
+        <p className="text-gray-400 text-sm font-medium">Your daily CRM priorities</p>
+        <p className="text-gray-600 text-xs mt-0.5">
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        </p>
+      </div>
+
+      {/* Intelligence insight banner */}
+      {coldCount >= 3 && (
+        <div className="mb-5 flex items-center gap-3 px-4 py-3 bg-orange-500/5 border border-orange-500/15 rounded-xl">
+          <TrendingUp size={14} className="text-orange-400 flex-shrink-0" />
+          <p className="text-xs text-gray-400 flex-1">
+            <span className="text-orange-300 font-medium">{coldCount} contacts</span> haven't been reached recently — prioritize outreach to keep relationships warm.
+          </p>
+          <button
+            onClick={() => document.getElementById('needs-attention')?.scrollIntoView({ behavior: 'smooth' })}
+            className="text-xs text-orange-400 hover:text-orange-300 flex-shrink-0 transition-colors font-medium"
+          >
+            Review →
+          </button>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatCard
           label="Total Contacts"
           value={contacts.length}
+          sub={newThisMonth > 0 ? `+${newThisMonth} this month` : undefined}
           icon={Users}
           iconColor="text-gray-600"
         />
         <StatCard
           label="Open Deals"
           value={openDeals.length}
-          sub={pipelineValue > 0 ? `${fmtCurrency(pipelineValue)} pipeline` : undefined}
+          sub={pipelineValue > 0 ? `${fmtCurrency(pipelineValue)} pipeline` : openDeals.length === 0 ? 'No pipeline yet' : undefined}
           icon={Briefcase}
           iconColor={openDeals.length > 0 ? 'text-blue-500' : 'text-gray-600'}
           color={openDeals.length > 0 ? 'text-blue-400' : 'text-gray-100'}
@@ -253,6 +293,8 @@ export default function Dashboard() {
         <StatCard
           label="Tasks Due Today"
           value={tasksDueToday.length}
+          sub={overdueTasksCount > 0 ? `${overdueTasksCount} overdue` : tasksDueToday.length > 0 ? 'Due today' : 'All caught up'}
+          subColor={overdueTasksCount > 0 ? 'text-red-500' : undefined}
           icon={CheckSquare}
           iconColor={tasksDueToday.length > 0 ? 'text-amber-400' : 'text-gray-600'}
           color={tasksDueToday.length > 0 ? 'text-amber-400' : 'text-gray-100'}
@@ -260,6 +302,8 @@ export default function Dashboard() {
         <StatCard
           label="Need Attention"
           value={coldCount}
+          sub={highPriorityCount > 0 ? `${highPriorityCount} high priority` : coldCount > 0 ? 'Follow up needed' : 'All on track'}
+          subColor={highPriorityCount > 0 ? 'text-red-400' : undefined}
           icon={AlertTriangle}
           iconColor={coldCount > 0 ? 'text-orange-400' : 'text-gray-600'}
           color={coldCount > 0 ? 'text-orange-400' : 'text-gray-100'}
@@ -268,18 +312,34 @@ export default function Dashboard() {
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-        {/* Needs Attention — 2 cols */}
-        <div className="lg:col-span-2 card p-5">
+        {/* Needs Attention — hero section */}
+        <div
+          id="needs-attention"
+          className={`lg:col-span-2 card p-5 ${needsAttention.length > 0 ? 'border-orange-500/20' : ''}`}
+        >
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle size={15} className="text-orange-400" />
             <h2 className="text-sm font-semibold text-gray-300">Needs Attention</h2>
-            <span className="ml-auto text-xs text-gray-600">{needsAttention.length} contacts</span>
+            {highPriorityCount > 0 && (
+              <span className="text-[10px] font-semibold text-red-400 bg-red-400/10 border border-red-400/20 px-1.5 py-0.5 rounded-md">
+                {highPriorityCount} high
+              </span>
+            )}
+            <span className="ml-auto text-xs text-gray-600">{allNeedsAttention.length} contacts</span>
           </div>
           {needsAttention.length > 0 ? (
             <div>
               {needsAttention.map((c) => (
                 <NeedsAttentionRow key={c.id} contact={c} onLog={setLoggingContact} />
               ))}
+              {allNeedsAttention.length > 8 && (
+                <button
+                  onClick={() => navigate('/contacts')}
+                  className="mt-3 w-full text-xs text-gray-500 hover:text-gray-400 transition-colors text-center py-1"
+                >
+                  +{allNeedsAttention.length - 8} more · View all →
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center py-8 text-center">
@@ -330,7 +390,16 @@ export default function Dashboard() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-4">No open tasks</p>
+              <div className="flex flex-col items-center py-4 text-center">
+                <CheckSquare size={24} className="text-gray-700 mb-2" />
+                <p className="text-sm text-gray-500">No open tasks</p>
+                <button
+                  onClick={() => navigate('/tasks')}
+                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Create a task →
+                </button>
+              </div>
             )}
           </div>
 
@@ -394,12 +463,12 @@ export default function Dashboard() {
           ) : (
             <div className="flex flex-col items-center py-6 text-center">
               <Briefcase size={24} className="text-gray-700 mb-2" />
-              <p className="text-sm text-gray-500">No open deals</p>
+              <p className="text-sm text-gray-500">No open deals yet</p>
               <button
                 onClick={() => navigate('/deals')}
                 className="mt-3 text-xs text-blue-400 hover:text-blue-300 transition-colors"
               >
-                Add a deal
+                Create your first deal →
               </button>
             </div>
           )}
@@ -439,6 +508,12 @@ export default function Dashboard() {
             <div className="flex flex-col items-center py-6 text-center">
               <Activity size={24} className="text-gray-700 mb-2" />
               <p className="text-sm text-gray-500">No recent activity</p>
+              <button
+                onClick={() => navigate('/contacts')}
+                className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Log your first interaction →
+              </button>
             </div>
           )}
         </div>
@@ -476,6 +551,12 @@ export default function Dashboard() {
             <div className="flex flex-col items-center py-6 text-center">
               <Users size={24} className="text-gray-700 mb-2" />
               <p className="text-sm text-gray-500">No contacts yet</p>
+              <button
+                onClick={() => navigate('/contacts')}
+                className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Add your first contact →
+              </button>
             </div>
           )}
         </div>
