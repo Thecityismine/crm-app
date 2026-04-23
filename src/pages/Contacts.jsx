@@ -6,7 +6,9 @@ import ContactCard, { ContactListRow } from '@/components/contacts/ContactCard'
 import ContactForm from '@/components/contacts/ContactForm'
 import ScanContactModal from '@/components/contacts/ScanContactModal'
 import CSVImportModal from '@/components/contacts/CSVImportModal'
-import { createContact } from '@/lib/firebase/contacts'
+import LogActivityModal from '@/components/activities/LogActivityModal'
+import { createContact, updateContact } from '@/lib/firebase/contacts'
+import { logActivity } from '@/lib/firebase/activities'
 import { getHealthScore } from '@/lib/healthScore'
 import { Search, Plus, ScanLine, Users, FileUp, LayoutGrid, List } from 'lucide-react'
 
@@ -20,25 +22,18 @@ const SORT_OPTIONS = [
 
 const HEALTH_ORDER = { cold: 0, overdue: 1, due_soon: 2, active: 3, unknown: 4 }
 
-// Known name suffixes to skip when finding the true family name
 const NAME_SUFFIXES = new Set([
   'jr','sr','ii','iii','iv','v','ra','aia','pe','pmp','cpa','phd','md','esq','leed',
 ])
 
-// Extract the true family name from a contact for sorting.
-// Handles middle initials ("Norman A. Glavas" → "Glavas"),
-// nicknames ("Gerald 'Jerry' Luczka" → "Luczka"),
-// suffixes ("Norman A. Glavas, RA" → "Glavas"), and
-// parenthetical nicknames ("Robert (Bob) Orban" → "Orban").
 function familyNameKey(c) {
   const full  = `${c.firstName || ''} ${c.lastName || ''}`.trim()
   const words = full.split(/\s+/).filter(Boolean)
   if (!words.length) return ''
-  // Scan backwards to find the last real name word
   for (let i = words.length - 1; i >= 0; i--) {
     const alpha = words[i].replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '')
     if (alpha.length > 1 && !NAME_SUFFIXES.has(alpha.toLowerCase())) {
-      return alpha  // strip punctuation, keep letters only
+      return alpha
     }
   }
   return words[0].replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '') || ''
@@ -53,8 +48,8 @@ function sortContacts(contacts, sortBy) {
         return aKey.localeCompare(bKey, undefined, { sensitivity: 'base' })
       }
       case 'company': {
-        const ac = a.company?.trim() || '\uffff'  // push blanks to end
-        const bc = b.company?.trim() || '\uffff'
+        const ac = a.company?.trim() || '￿'
+        const bc = b.company?.trim() || '￿'
         return ac.localeCompare(bc, undefined, { sensitivity: 'base' })
       }
       case 'last_contacted': {
@@ -76,6 +71,7 @@ function sortContacts(contacts, sortBy) {
 }
 
 const PINNED_RELS = ['Architect', 'MEP Engineer', 'Contractor']
+const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms'])
 
 export default function Contacts() {
   const { contacts } = useContacts()
@@ -88,6 +84,7 @@ export default function Contacts() {
   const [showScan, setShowScan] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [scannedContact, setScannedContact] = useState(null)
+  const [loggingContact, setLoggingContact] = useState(null)
 
   const filtered = contacts.filter((c) => {
     const matchesRel = activeRel === 'All' || c.relationship === activeRel
@@ -114,44 +111,54 @@ export default function Contacts() {
     setShowForm(true)
   }
 
+  const handleLogSave = async (data) => {
+    await logActivity(loggingContact.id, data)
+    if (COMMUNICATION_TYPES.has(data.type)) {
+      await updateContact(loggingContact.id, { lastCommunication: data.occurredAt })
+      useContactStore.getState().updateContact(loggingContact.id, { lastCommunication: data.occurredAt })
+    }
+    refreshContacts()
+    setLoggingContact(null)
+  }
+
+  const relTabs = ['All', ...PINNED_RELS.filter(p => relationshipOptions.includes(p)), ...relationshipOptions.filter(r => !PINNED_RELS.includes(r))]
+
   return (
     <div>
-      {/* Header */}
+      {/* Page header: title on left, actions on right */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-2xl font-semibold text-gray-100">Contacts</h1>
           <p className="text-gray-500 text-sm mt-0.5">{contacts.length} total</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => setShowImport(true)}
-            className="btn-secondary flex items-center justify-center gap-2 sm:px-4 p-2"
+            className="btn-secondary p-2"
             title="Import from CSV"
           >
             <FileUp size={15} />
-            <span className="hidden sm:inline">Import</span>
           </button>
           <button
             onClick={() => setShowScan(true)}
-            className="btn-secondary flex items-center justify-center gap-2 sm:px-4 p-2"
+            className="btn-secondary p-2"
             title="Scan contact from image"
           >
             <ScanLine size={15} />
-            <span className="hidden sm:inline">Scan</span>
           </button>
           <button
             onClick={() => { setScannedContact(null); setShowForm(true) }}
-            className="btn-primary flex items-center justify-center gap-2 sm:px-4 p-2"
+            className="btn-primary flex items-center gap-2 px-4"
             title="Add Contact"
           >
             <Plus size={16} />
-            <span className="hidden sm:inline">Add Contact</span>
+            <span>Add Contact</span>
           </button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input
           className="input pl-8"
@@ -162,29 +169,32 @@ export default function Contacts() {
       </div>
 
       {/* Relationship filter tabs */}
-      <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-        {['All', ...PINNED_RELS.filter(p => relationshipOptions.includes(p)), ...relationshipOptions.filter(r => !PINNED_RELS.includes(r))].map((rel) => {
+      <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+        {relTabs.map((rel) => {
           const count = rel === 'All'
             ? contacts.length
             : contacts.filter((c) => c.relationship === rel).length
+          const active = activeRel === rel
           return (
             <button
               key={rel}
               onClick={() => setActiveRel(rel)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                activeRel === rel
-                  ? 'bg-gray-700 text-gray-100'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border ${
+                active
+                  ? 'bg-blue-500/15 text-blue-300 border-blue-500/25'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800 border-transparent'
               }`}
             >
-              {rel} {count > 0 && <span className="ml-1 text-gray-500">{count}</span>}
+              {rel}{count > 0 && (
+                <span className={`ml-1.5 ${active ? 'text-blue-400' : 'text-gray-600'}`}>{count}</span>
+              )}
             </button>
           )
         })}
       </div>
 
-      {/* Sort + count + view toggle */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Sort + view toggle */}
+      <div className="flex items-center gap-2 mb-1">
         <select
           className="input w-auto text-xs py-1.5 pr-7"
           value={sortBy}
@@ -194,9 +204,6 @@ export default function Contacts() {
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        <span className="text-xs text-gray-600">
-          {sorted.length} contact{sorted.length !== 1 ? 's' : ''}
-        </span>
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={() => setViewMode('grid')}
@@ -214,19 +221,22 @@ export default function Contacts() {
           </button>
         </div>
       </div>
+      <p className="text-xs text-gray-600 mb-3">
+        {sorted.length} contact{sorted.length !== 1 ? 's' : ''}
+      </p>
 
       {/* Contacts */}
       {sorted.length > 0 ? (
         viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
             {sorted.map((contact) => (
-              <ContactCard key={contact.id} contact={contact} />
+              <ContactCard key={contact.id} contact={contact} onLog={setLoggingContact} />
             ))}
           </div>
         ) : (
           <div className="card overflow-hidden">
             {sorted.map((contact) => (
-              <ContactListRow key={contact.id} contact={contact} />
+              <ContactListRow key={contact.id} contact={contact} onLog={setLoggingContact} />
             ))}
           </div>
         )
@@ -239,7 +249,9 @@ export default function Contacts() {
           {!search && activeRel === 'All' && (
             <p className="text-gray-600 text-sm mt-1">
               Add one manually or{' '}
-              <button onClick={() => setShowImport(true)} className="text-brand-500 hover:underline">import from CSV</button>
+              <button onClick={() => setShowImport(true)} className="text-blue-400 hover:text-blue-300 transition-colors">
+                import from CSV
+              </button>
             </p>
           )}
         </div>
@@ -264,6 +276,13 @@ export default function Contacts() {
           contact={scannedContact}
           onClose={() => { setShowForm(false); setScannedContact(null) }}
           onSave={handleCreate}
+        />
+      )}
+
+      {loggingContact && (
+        <LogActivityModal
+          onClose={() => setLoggingContact(null)}
+          onSave={handleLogSave}
         />
       )}
     </div>

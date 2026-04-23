@@ -2,9 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import Avatar from '@/components/ui/Avatar'
 import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import { getHealthScore } from '@/lib/healthScore'
-import { Phone, Calendar, MapPin, Mail } from 'lucide-react'
+import { Phone, Calendar, MapPin, Mail, Activity } from 'lucide-react'
 
-// Left border color per health score (full class strings for Tailwind JIT)
 const BORDER_CLASS = {
   green:  'border-l-2 border-l-green-500',
   yellow: 'border-l-2 border-l-yellow-500',
@@ -41,27 +40,30 @@ const fmtLastContacted = (iso) => {
 }
 
 // ── Grid card ──────────────────────────────────────────────────────────────
-export default function ContactCard({ contact }) {
+export default function ContactCard({ contact, onLog }) {
   const navigate = useNavigate()
   const health = getHealthScore(contact)
   const isOverdue = contact.nextFollowUp && new Date(contact.nextFollowUp) < new Date()
   const followUpStr = formatFollowUp(contact.nextFollowUp)
   const lastContacted = fmtLastContacted(contact.lastCommunication)
+  const phone = contact.mobilePhone || contact.officePhone
 
   return (
     <div
-      className={`card p-4 cursor-pointer hover:border-gray-700 hover:bg-gray-800/50 transition-all ${BORDER_CLASS[health.color]}`}
+      className={`card p-3 cursor-pointer hover:border-gray-700 hover:bg-gray-800/50 transition-all ${BORDER_CLASS[health.color]}`}
       onClick={() => navigate(`/contacts/${contact.id}`)}
     >
-      <div className="flex items-start gap-3 mb-3">
+      {/* Avatar + name + health */}
+      <div className="flex items-start gap-2.5 mb-2">
         <Avatar
           firstName={contact.firstName}
           lastName={contact.lastName}
           src={contact.photoUrl}
           linkedin={contact.linkedin}
+          size="sm"
         />
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-gray-100 truncate">
+          <div className="font-medium text-sm text-gray-100 truncate">
             {contact.firstName} {contact.lastName}
           </div>
           {contact.title && (
@@ -76,45 +78,79 @@ export default function ContactCard({ contact }) {
         </div>
       </div>
 
-      <div className="space-y-1.5">
+      {/* Detail rows */}
+      <div className="space-y-1 mb-2.5">
         {contact.email && (
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
             <Mail size={11} className="flex-shrink-0 text-gray-600" />
             <span className="truncate">{contact.email}</span>
           </div>
         )}
-        {(contact.mobilePhone || contact.officePhone) && (
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+        {phone && (
+          <div className="flex items-center gap-2 text-xs text-gray-500">
             <Phone size={11} className="flex-shrink-0 text-gray-600" />
-            {contact.mobilePhone || contact.officePhone}
+            {phone}
           </div>
         )}
         {contact.location && (
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
             <MapPin size={11} className="flex-shrink-0 text-gray-600" />
             {contact.location}
           </div>
         )}
         {followUpStr ? (
-          <div className={`flex items-center gap-2 text-xs ${isOverdue ? 'text-red-400' : 'text-gray-400'}`}>
+          <div className={`flex items-center gap-2 text-xs ${isOverdue ? 'text-red-400' : 'text-gray-500'}`}>
             <Calendar size={11} className="flex-shrink-0" />
             {isOverdue ? 'Overdue: ' : 'Follow up: '}{followUpStr}
           </div>
         ) : lastContacted ? (
-          <div className="text-xs text-gray-600">{lastContacted}</div>
+          <div className="text-xs text-gray-600 pl-[15px]">{lastContacted}</div>
         ) : null}
+      </div>
+
+      {/* Quick actions */}
+      <div
+        className="border-t border-gray-800/70 pt-2 flex items-center gap-0.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {phone && (
+          <a
+            href={`tel:${phone}`}
+            className="flex-1 flex items-center justify-center py-1.5 rounded-md text-gray-600 hover:text-green-400 hover:bg-gray-800/80 transition-colors"
+            title="Call"
+          >
+            <Phone size={13} />
+          </a>
+        )}
+        {contact.email && (
+          <a
+            href={`mailto:${contact.email}`}
+            className="flex-1 flex items-center justify-center py-1.5 rounded-md text-gray-600 hover:text-blue-400 hover:bg-gray-800/80 transition-colors"
+            title="Email"
+          >
+            <Mail size={13} />
+          </a>
+        )}
+        <button
+          onClick={() => onLog?.(contact)}
+          className="flex-1 flex items-center justify-center py-1.5 rounded-md text-gray-600 hover:text-purple-400 hover:bg-gray-800/80 transition-colors"
+          title="Log activity"
+        >
+          <Activity size={13} />
+        </button>
       </div>
     </div>
   )
 }
 
 // ── List row ───────────────────────────────────────────────────────────────
-export function ContactListRow({ contact }) {
+export function ContactListRow({ contact, onLog }) {
   const navigate = useNavigate()
   const health = getHealthScore(contact)
   const isOverdue = contact.nextFollowUp && new Date(contact.nextFollowUp) < new Date()
   const followUpStr = formatFollowUp(contact.nextFollowUp)
   const lastContacted = fmtLastContacted(contact.lastCommunication)
+  const phone = contact.mobilePhone || contact.officePhone
 
   return (
     <div
@@ -159,7 +195,7 @@ export function ContactListRow({ contact }) {
       </div>
 
       {/* Follow-up / Last contacted */}
-      <div className="w-28 text-right flex-shrink-0">
+      <div className="hidden sm:block w-28 text-right flex-shrink-0">
         {followUpStr ? (
           <span className={`text-xs ${isOverdue ? 'text-red-400' : 'text-gray-500'}`}>
             {isOverdue ? '⚠ ' : ''}{followUpStr}
@@ -169,6 +205,38 @@ export function ContactListRow({ contact }) {
         ) : (
           <span className="text-xs text-gray-700">—</span>
         )}
+      </div>
+
+      {/* Quick actions */}
+      <div
+        className="flex items-center gap-0.5 flex-shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {phone && (
+          <a
+            href={`tel:${phone}`}
+            className="p-1.5 rounded-md text-gray-700 hover:text-green-400 hover:bg-gray-800 transition-colors"
+            title="Call"
+          >
+            <Phone size={14} />
+          </a>
+        )}
+        {contact.email && (
+          <a
+            href={`mailto:${contact.email}`}
+            className="p-1.5 rounded-md text-gray-700 hover:text-blue-400 hover:bg-gray-800 transition-colors"
+            title="Email"
+          >
+            <Mail size={14} />
+          </a>
+        )}
+        <button
+          onClick={() => onLog?.(contact)}
+          className="p-1.5 rounded-md text-gray-700 hover:text-purple-400 hover:bg-gray-800 transition-colors"
+          title="Log activity"
+        >
+          <Activity size={14} />
+        </button>
       </div>
     </div>
   )
