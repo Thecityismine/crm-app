@@ -5,17 +5,42 @@ import {
   MapPin, CheckSquare, Mail, BarChart2, Settings, Globe, X
 } from 'lucide-react'
 
-const links = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/contacts', icon: Users, label: 'Contacts' },
-  { to: '/companies', icon: Building2, label: 'Companies' },
-  { to: '/deals', icon: Briefcase, label: 'Deals' },
-  { to: '/pipeline', icon: Kanban, label: 'Pipeline' },
-  { to: '/properties', icon: MapPin, label: 'Properties' },
-  { to: '/map', icon: Globe, label: 'Map' },
-  { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
-  { to: '/emails', icon: Mail, label: 'Emails' },
-  { to: '/reports', icon: BarChart2, label: 'Reports' },
+const navGroups = [
+  {
+    label: 'Core',
+    links: [
+      { to: '/',         icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/contacts', icon: Users,           label: 'Contacts'  },
+      { to: '/companies',icon: Building2,       label: 'Companies' },
+    ],
+  },
+  {
+    label: 'Sales',
+    links: [
+      { to: '/deals',    icon: Briefcase, label: 'Deals'    },
+      { to: '/pipeline', icon: Kanban,    label: 'Pipeline' },
+    ],
+  },
+  {
+    label: 'Field',
+    links: [
+      { to: '/properties', icon: MapPin, label: 'Properties' },
+      { to: '/map',        icon: Globe,  label: 'Map'        },
+    ],
+  },
+  {
+    label: 'Execution',
+    links: [
+      { to: '/tasks',  icon: CheckSquare, label: 'Tasks'  },
+      { to: '/emails', icon: Mail,        label: 'Emails' },
+    ],
+  },
+  {
+    label: 'Insights',
+    links: [
+      { to: '/reports', icon: BarChart2, label: 'Reports' },
+    ],
+  },
 ]
 
 export default function Sidebar() {
@@ -51,22 +76,33 @@ export default function Sidebar() {
             <X size={18} />
           </button>
         </div>
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {links.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              onClick={handleLinkClick}
-              className={({ isActive }) =>
-                `sidebar-link ${isActive ? 'active' : ''}`
-              }
-            >
-              <Icon size={16} />
-              {label}
-            </NavLink>
+
+        <nav className="flex-1 p-3 overflow-y-auto">
+          {navGroups.map(({ label, links }) => (
+            <div key={label} className="mb-4">
+              <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-2 mb-1">
+                {label}
+              </p>
+              <div className="space-y-0.5">
+                {links.map(({ to, icon: Icon, label: linkLabel }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={to === '/'}
+                    onClick={handleLinkClick}
+                    className={({ isActive }) =>
+                      `sidebar-link ${isActive ? 'active' : ''}`
+                    }
+                  >
+                    <Icon size={16} />
+                    {linkLabel}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
+
         <div className="p-3 pb-safe border-t border-gray-800 flex-shrink-0">
           <NavLink
             to="/settings"
