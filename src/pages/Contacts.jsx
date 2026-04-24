@@ -71,7 +71,7 @@ function sortContacts(contacts, sortBy) {
 }
 
 const PINNED_RELS = ['Architect', 'MEP Engineer', 'Contractor']
-const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms'])
+const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
 
 export default function Contacts() {
   const { contacts } = useContacts()

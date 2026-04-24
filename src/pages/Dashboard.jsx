@@ -192,7 +192,7 @@ export default function Dashboard() {
     getRecentActivities(8).then(setRecentActivities).catch(console.warn)
   }, [])
 
-  const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms'])
+  const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
 
   const handleLogSave = async (data) => {
     await logActivity(loggingContact.id, data)

@@ -16,7 +16,7 @@ const ACTIVITY_TYPES = [
   { value: 'sms',     label: 'SMS',     Icon: MessageSquare },
 ]
 
-const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms'])
+const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
 const todayISO = () => new Date().toISOString().slice(0, 16)
 
 // ── Shared contact combobox ───────────────────────────────────────────────────

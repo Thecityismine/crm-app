@@ -28,8 +28,8 @@ const formatDate = (iso) => {
   })
 }
 
-// Types that count as a real communication — update lastCommunication on the contact
-const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms'])
+// Types that update lastCommunication on the contact (notes count — they document an interaction)
+const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
 
 export default function ContactTimeline({ contact, onContactUpdated }) {
   const [activities, setActivities] = useState([])
