@@ -32,6 +32,13 @@
   }
 }
 
+/* Prevent iOS Safari from zooming in on input focus (requires font-size >= 16px) */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* iOS safe-area support */
 .bottom-nav-safe {
   padding-bottom: env(safe-area-inset-bottom);
