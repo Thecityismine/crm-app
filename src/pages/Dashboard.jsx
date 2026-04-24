@@ -179,7 +179,6 @@ export default function Dashboard() {
 
   const allNeedsAttention = getNeedsAttention(contacts)
   const needsAttention = allNeedsAttention.slice(0, 8)
-  const coldCount = allNeedsAttention.filter(c => ['cold', 'overdue'].includes(c._health.score)).length
   const highPriorityCount = allNeedsAttention.filter(c => c._health.score === 'cold').length
 
   const [loggingContact, setLoggingContact] = useState(null)
@@ -258,11 +257,11 @@ export default function Dashboard() {
       </div>
 
       {/* Intelligence insight banner */}
-      {coldCount >= 3 && (
+      {allNeedsAttention.length >= 3 && (
         <div className="mb-5 flex items-center gap-3 px-4 py-3 bg-orange-500/5 border border-orange-500/15 rounded-xl">
           <TrendingUp size={14} className="text-orange-400 flex-shrink-0" />
           <p className="text-xs text-gray-400 flex-1">
-            <span className="text-orange-300 font-medium">{coldCount} contacts</span> haven't been reached recently — prioritize outreach to keep relationships warm.
+            <span className="text-orange-300 font-medium">{allNeedsAttention.length} contacts</span> haven't been reached recently — prioritize outreach to keep relationships warm.
           </p>
           <button
             onClick={() => document.getElementById('needs-attention')?.scrollIntoView({ behavior: 'smooth' })}
@@ -301,12 +300,12 @@ export default function Dashboard() {
         />
         <StatCard
           label="Need Attention"
-          value={coldCount}
-          sub={highPriorityCount > 0 ? `${highPriorityCount} high priority` : coldCount > 0 ? 'Follow up needed' : 'All on track'}
+          value={allNeedsAttention.length}
+          sub={highPriorityCount > 0 ? `${highPriorityCount} high priority` : allNeedsAttention.length > 0 ? 'Follow up needed' : 'All on track'}
           subColor={highPriorityCount > 0 ? 'text-red-400' : undefined}
           icon={AlertTriangle}
-          iconColor={coldCount > 0 ? 'text-orange-400' : 'text-gray-600'}
-          color={coldCount > 0 ? 'text-orange-400' : 'text-gray-100'}
+          iconColor={allNeedsAttention.length > 0 ? 'text-orange-400' : 'text-gray-600'}
+          color={allNeedsAttention.length > 0 ? 'text-orange-400' : 'text-gray-100'}
         />
       </div>
 
