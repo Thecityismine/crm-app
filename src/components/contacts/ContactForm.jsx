@@ -4,7 +4,7 @@ import Avatar from '@/components/ui/Avatar'
 import { useSettingsStore } from '@/store/settingsStore'
 import { ensureCompany } from '@/lib/firebase/companies'
 import { auth } from '@/config/firebase'
-import { AlertCircle, Camera, Loader2, Plus, X } from 'lucide-react'
+import { AlertCircle, Camera, Loader2, Plus, X, Trash2 } from 'lucide-react'
 
 const INTERVALS = ['30 Days', '60 Days', '90 Days', '6 Months', '1 Year']
 
@@ -21,7 +21,7 @@ function initEmails(contact) {
   return [contact.email || '']
 }
 
-export default function ContactForm({ contact, onClose, onSave }) {
+export default function ContactForm({ contact, onClose, onSave, onDelete }) {
   const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
   const fileInputRef = useRef(null)
 
@@ -334,11 +334,23 @@ export default function ContactForm({ contact, onClose, onSave }) {
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-          <button type="submit" className="btn-primary" disabled={saving || uploading}>
-            {saving ? 'Saving...' : contact ? 'Save Changes' : 'Add Contact'}
-          </button>
+        <div className="flex items-center pt-2">
+          {contact && onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-400 transition-colors"
+            >
+              <Trash2 size={14} />
+              Delete contact
+            </button>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+            <button type="submit" className="btn-primary" disabled={saving || uploading}>
+              {saving ? 'Saving...' : contact ? 'Save Changes' : 'Add Contact'}
+            </button>
+          </div>
         </div>
       </form>
     </Modal>

@@ -1,9 +1,9 @@
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
-import { Mail, Phone, MapPin, Linkedin, Instagram, Globe, Edit2, Trash2 } from 'lucide-react'
+import { Mail, Phone, MapPin, Linkedin, Instagram, Globe, Edit2 } from 'lucide-react'
 
-export default function ContactHeader({ contact, onEdit, onDelete }) {
+export default function ContactHeader({ contact, onEdit }) {
   // Collect all emails (new multi-email field or fallback to single email)
   const emails = Array.isArray(contact.emails) && contact.emails.length
     ? contact.emails
@@ -40,12 +40,6 @@ export default function ContactHeader({ contact, onEdit, onDelete }) {
             className="flex items-center gap-1.5 btn-secondary text-xs px-3 py-1.5"
           >
             <Edit2 size={13} /> Edit
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-          >
-            <Trash2 size={16} />
           </button>
         </div>
       </div>

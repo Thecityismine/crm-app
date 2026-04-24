@@ -85,7 +85,7 @@ export default function ContactDetail() {
         <ArrowLeft size={15} /> Back to Contacts
       </button>
 
-      <ContactHeader contact={contact} onEdit={() => setShowEdit(true)} onDelete={handleDelete} />
+      <ContactHeader contact={contact} onEdit={() => setShowEdit(true)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Properties panel */}
@@ -140,6 +140,7 @@ export default function ContactDetail() {
           contact={contact}
           onClose={() => setShowEdit(false)}
           onSave={handleSave}
+          onDelete={handleDelete}
         />
       )}
     </div>
