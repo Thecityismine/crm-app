@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { auth } from '@/config/firebase'
+import { auth, storage } from '@/config/firebase'
 import { updateProfile } from 'firebase/auth'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { parseCSV, mapCSVRowToContact } from '@/utils/importMapper'
 import { batchImportContacts, getContacts } from '@/lib/firebase/contacts'
 import { getDeals } from '@/lib/firebase/deals'
@@ -9,7 +10,7 @@ import { useSettingsStore, PIPELINE_TEMPLATES } from '@/store/settingsStore'
 import { useContactStore } from '@/store/contactStore'
 import {
   Upload, CheckCircle, AlertCircle, FileText, Plus, X,
-  Download, User, Briefcase, CheckSquare,
+  Download, User, Briefcase, CheckSquare, Camera,
 } from 'lucide-react'
 
 // ── CSV export helper ─────────────────────────────────────────────────────────
@@ -38,13 +39,37 @@ function Section({ label, children }) {
   )
 }
 
+// ── Resize image to max side px via canvas, returns a Blob ───────────────────
+function resizeImage(file, maxSide = 400) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height))
+      const w = Math.round(img.width  * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w; canvas.height = h
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(resolve, 'image/jpeg', 0.88)
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
 // ── 1. User Profile ───────────────────────────────────────────────────────────
 function UserProfileSection() {
   const user = auth.currentUser
   const [editing,     setEditing]     = useState(false)
   const [displayName, setDisplayName] = useState(user?.displayName || '')
+  const [photoURL,    setPhotoURL]    = useState(user?.photoURL    || '')
   const [saving,      setSaving]      = useState(false)
+  const [uploading,   setUploading]   = useState(false)
   const [saved,       setSaved]       = useState(false)
+  const [photoError,  setPhotoError]  = useState('')
+  const fileInputRef = useRef()
 
   if (!user) return null
 
@@ -65,13 +90,62 @@ function UserProfileSection() {
     }
   }
 
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoError('')
+    setUploading(true)
+    try {
+      const blob = await resizeImage(file, 400)
+      const storageRef = ref(storage, `profile-photos/${user.uid}`)
+      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' })
+      const url = await getDownloadURL(storageRef)
+      await updateProfile(auth.currentUser, { photoURL: url })
+      setPhotoURL(url)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      console.error('Photo upload failed:', err)
+      setPhotoError('Upload failed — check storage rules.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <div className="card p-5 flex items-start gap-4">
-      <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 text-white font-semibold text-lg">
-        {user.photoURL
-          ? <img src={user.photoURL} alt="" className="w-12 h-12 rounded-full object-cover" />
-          : initials}
-      </div>
+      {/* Clickable avatar */}
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className="relative w-14 h-14 rounded-full flex-shrink-0 group focus:outline-none"
+        title="Change profile photo"
+      >
+        {photoURL ? (
+          <img src={photoURL} alt="" className="w-14 h-14 rounded-full object-cover" />
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-lg select-none">
+            {initials}
+          </div>
+        )}
+        {/* Hover overlay */}
+        <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          {uploading
+            ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            : <Camera size={16} className="text-white" />
+          }
+        </div>
+      </button>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoChange}
+      />
+
       <div className="flex-1 min-w-0">
         {editing ? (
           <div className="space-y-2">
@@ -108,6 +182,8 @@ function UserProfileSection() {
               </button>
             </div>
             <p className="text-sm text-gray-500 mt-0.5">{user.email}</p>
+            {photoError && <p className="text-xs text-red-400 mt-1">{photoError}</p>}
+            <p className="text-xs text-gray-600 mt-1">Tap photo to change</p>
           </>
         )}
       </div>
