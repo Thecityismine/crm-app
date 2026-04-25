@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Plus, Activity, User, Briefcase, CheckSquare } from 'lucide-react'
 import { useUIStore } from '@/store/uiStore'
 
@@ -13,6 +14,9 @@ const ACTIONS = [
 export default function QuickActionsMenu() {
   const [open, setOpen] = useState(false)
   const { openQuickAction } = useUIStore()
+  const { pathname } = useLocation()
+
+  if (pathname !== '/') return null
 
   const handleAction = (type) => {
     setOpen(false)
