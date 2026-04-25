@@ -64,8 +64,14 @@ export default function LogActivityModal({ onClose, onSave }) {
     try {
       let imageURL = null
       if (imageFile) {
-        const blob = await resizeImage(imageFile, 1200)
-        const path = `activity-attachments/${Date.now()}_${imageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+        let blob
+        try {
+          blob = await resizeImage(imageFile, 1200)
+        } catch {
+          blob = imageFile  // fallback: upload original if canvas resize fails
+        }
+        const safeName = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path = `activity-attachments/${Date.now()}_${safeName}`
         const sRef = storageRef(storage, path)
         await uploadBytes(sRef, blob, { contentType: 'image/jpeg' })
         imageURL = await getDownloadURL(sRef)
@@ -79,7 +85,12 @@ export default function LogActivityModal({ onClose, onSave }) {
       })
       onClose()
     } catch (err) {
-      setError(err?.message ?? 'Failed to save activity.')
+      const msg = err?.message ?? ''
+      if (msg.includes('storage') || msg.includes('upload') || msg.includes('Firebase')) {
+        setError('Photo upload failed. Check your connection and try again.')
+      } else {
+        setError(msg || 'Failed to save activity.')
+      }
     } finally {
       setSaving(false)
     }
@@ -153,7 +164,6 @@ export default function LogActivityModal({ onClose, onSave }) {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             onChange={handleImagePick}
           />
