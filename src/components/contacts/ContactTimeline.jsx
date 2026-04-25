@@ -108,6 +108,15 @@ export default function ContactTimeline({ contact, onContactUpdated }) {
                 {activity.notes && (
                   <p className="text-sm text-gray-400 mt-1 leading-relaxed">{activity.notes}</p>
                 )}
+                {activity.imageURL && (
+                  <a href={activity.imageURL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
+                    <img
+                      src={activity.imageURL}
+                      alt="attachment"
+                      className="h-24 w-auto rounded-lg object-cover border border-gray-700 hover:border-gray-500 transition-colors"
+                    />
+                  </a>
+                )}
               </li>
             )
           })}
