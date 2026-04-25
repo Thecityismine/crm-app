@@ -1,8 +1,36 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Phone, Mail, Users, FileText, MessageSquare, Plus, Loader } from 'lucide-react'
+import { Phone, Mail, Users, FileText, MessageSquare, Plus, Loader, X } from 'lucide-react'
 import { getActivities, logActivity } from '@/lib/firebase/activities'
 import { updateContact } from '@/lib/firebase/contacts'
 import LogActivityModal from '@/components/activities/LogActivityModal'
+
+function ImageLightbox({ url, onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center text-gray-300 hover:bg-gray-700 transition-colors"
+      >
+        <X size={18} />
+      </button>
+      <img
+        src={url}
+        alt="attachment"
+        className="max-w-full max-h-full rounded-xl object-contain shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  )
+}
 
 const TYPE_META = {
   call:    { label: 'Call',    Icon: Phone,         color: 'text-green-400',  bg: 'bg-green-500/10' },
@@ -32,9 +60,10 @@ const formatDate = (iso) => {
 const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
 
 export default function ContactTimeline({ contact, onContactUpdated }) {
-  const [activities, setActivities] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
+  const [activities,   setActivities]   = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [showModal,    setShowModal]    = useState(false)
+  const [lightboxUrl,  setLightboxUrl]  = useState(null)
 
   const load = useCallback(async () => {
     if (!contact?.id) return
@@ -109,13 +138,17 @@ export default function ContactTimeline({ contact, onContactUpdated }) {
                   <p className="text-sm text-gray-400 mt-1 leading-relaxed">{activity.notes}</p>
                 )}
                 {activity.imageURL && (
-                  <a href={activity.imageURL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxUrl(activity.imageURL)}
+                    className="mt-2 inline-block"
+                  >
                     <img
                       src={activity.imageURL}
                       alt="attachment"
                       className="h-24 w-auto rounded-lg object-cover border border-gray-700 hover:border-gray-500 transition-colors"
                     />
-                  </a>
+                  </button>
                 )}
               </li>
             )
@@ -128,6 +161,10 @@ export default function ContactTimeline({ contact, onContactUpdated }) {
           onClose={() => setShowModal(false)}
           onSave={handleSave}
         />
+      )}
+
+      {lightboxUrl && (
+        <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       )}
     </div>
   )
