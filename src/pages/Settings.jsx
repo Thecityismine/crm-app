@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { auth, storage } from '@/config/firebase'
+import { auth } from '@/config/firebase'
 import { updateProfile } from 'firebase/auth'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { parseCSV, mapCSVRowToContact } from '@/utils/importMapper'
 import { batchImportContacts, getContacts } from '@/lib/firebase/contacts'
 import { getDeals } from '@/lib/firebase/deals'
@@ -39,7 +38,7 @@ function Section({ label, children }) {
   )
 }
 
-// ── Resize image to max side px via canvas, returns a Blob ───────────────────
+// ── Resize image via canvas → Blob ────────────────────────────────────────────
 function resizeImage(file, maxSide = 400) {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -52,11 +51,39 @@ function resizeImage(file, maxSide = 400) {
       canvas.width = w; canvas.height = h
       canvas.getContext('2d').drawImage(img, 0, 0, w, h)
       URL.revokeObjectURL(url)
-      canvas.toBlob(resolve, 'image/jpeg', 0.88)
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error('Canvas toBlob returned null'))
+      }, 'image/jpeg', 0.88)
     }
-    img.onerror = reject
+    img.onerror = () => reject(new Error('Image failed to load'))
     img.src = url
   })
+}
+
+// ── Firebase Storage REST upload → returns public download URL ────────────────
+async function uploadToStorage(blob, storagePath) {
+  const user = auth.currentUser
+  if (!user) throw new Error('Not authenticated')
+  const idToken = await user.getIdToken()
+  const bucket  = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET
+  const encoded = encodeURIComponent(storagePath)
+
+  const res = await fetch(
+    `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?uploadType=media&name=${encoded}`,
+    {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'image/jpeg' },
+      body:    blob,
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || `Storage upload failed (${res.status})`)
+  }
+  const data = await res.json()
+  const token = data.downloadTokens
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encoded}?alt=media&token=${token}`
 }
 
 // ── 1. User Profile ───────────────────────────────────────────────────────────
@@ -96,17 +123,18 @@ function UserProfileSection() {
     setPhotoError('')
     setUploading(true)
     try {
-      const blob = await resizeImage(file, 400)
-      const storageRef = ref(storage, `profile-photos/${user.uid}`)
-      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' })
-      const url = await getDownloadURL(storageRef)
+      let blob
+      try { blob = await resizeImage(file, 400) }
+      catch { blob = file }
+
+      const url = await uploadToStorage(blob, `profile-photos/${user.uid}`)
       await updateProfile(auth.currentUser, { photoURL: url })
       setPhotoURL(url)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
       console.error('Photo upload failed:', err)
-      setPhotoError('Upload failed — check storage rules.')
+      setPhotoError(err?.message || 'Upload failed.')
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -129,11 +157,13 @@ function UserProfileSection() {
             {initials}
           </div>
         )}
-        {/* Hover overlay */}
-        <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Camera overlay — always visible at low opacity, full on hover/upload */}
+        <div className={`absolute inset-0 rounded-full flex items-center justify-center transition-opacity ${
+          uploading ? 'bg-black/60 opacity-100' : 'bg-black/30 opacity-100 group-hover:bg-black/60'
+        }`}>
           {uploading
             ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            : <Camera size={16} className="text-white" />
+            : <Camera size={14} className="text-white/80" />
           }
         </div>
       </button>

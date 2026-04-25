@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { storage } from '@/config/firebase'
+import { auth } from '@/config/firebase'
 import Modal from '@/components/ui/Modal'
 import { Phone, Mail, Users, FileText, MessageSquare, AlertCircle, ImagePlus, X } from 'lucide-react'
 
@@ -26,11 +25,38 @@ function resizeImage(file, maxSide = 1200) {
       canvas.width = w; canvas.height = h
       canvas.getContext('2d').drawImage(img, 0, 0, w, h)
       URL.revokeObjectURL(url)
-      canvas.toBlob(resolve, 'image/jpeg', 0.85)
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error('Canvas toBlob returned null'))
+      }, 'image/jpeg', 0.85)
     }
-    img.onerror = reject
+    img.onerror = () => reject(new Error('Image load failed'))
     img.src = url
   })
+}
+
+async function uploadToStorage(blob, storagePath) {
+  const user = auth.currentUser
+  if (!user) throw new Error('Not authenticated')
+  const idToken = await user.getIdToken()
+  const bucket  = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET
+  const encoded = encodeURIComponent(storagePath)
+
+  const res = await fetch(
+    `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?uploadType=media&name=${encoded}`,
+    {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'image/jpeg' },
+      body:    blob,
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || `Upload failed (${res.status})`)
+  }
+  const data = await res.json()
+  const token = data.downloadTokens
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encoded}?alt=media&token=${token}`
 }
 
 export default function LogActivityModal({ onClose, onSave }) {
@@ -65,16 +91,10 @@ export default function LogActivityModal({ onClose, onSave }) {
       let imageURL = null
       if (imageFile) {
         let blob
-        try {
-          blob = await resizeImage(imageFile, 1200)
-        } catch {
-          blob = imageFile  // fallback: upload original if canvas resize fails
-        }
+        try { blob = await resizeImage(imageFile, 1200) }
+        catch { blob = imageFile }
         const safeName = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-        const path = `activity-attachments/${Date.now()}_${safeName}`
-        const sRef = storageRef(storage, path)
-        await uploadBytes(sRef, blob, { contentType: 'image/jpeg' })
-        imageURL = await getDownloadURL(sRef)
+        imageURL = await uploadToStorage(blob, `activity-attachments/${Date.now()}_${safeName}`)
       }
 
       await onSave({
