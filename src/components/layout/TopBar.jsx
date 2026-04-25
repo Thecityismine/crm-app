@@ -43,8 +43,13 @@ export default function TopBar() {
           {notifOpen && <NotificationPanel onClose={() => setNotifOpen(false)} />}
         </div>
 
-        <div className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-          {getInitials(user?.displayName?.split(' ')[0], user?.displayName?.split(' ')[1])}
+        <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-brand-500 flex items-center justify-center">
+          {user?.photoURL
+            ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+            : <span className="text-white text-xs font-semibold">
+                {getInitials(user?.displayName?.split(' ')[0], user?.displayName?.split(' ')[1])}
+              </span>
+          }
         </div>
         <button onClick={logout} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400">
           <LogOut size={16} />

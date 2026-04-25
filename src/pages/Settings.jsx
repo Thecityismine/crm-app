@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { auth } from '@/config/firebase'
 import { updateProfile } from 'firebase/auth'
+import { useAuthStore } from '@/store/authStore'
 import { parseCSV, mapCSVRowToContact } from '@/utils/importMapper'
 import { batchImportContacts, getContacts } from '@/lib/firebase/contacts'
 import { getDeals } from '@/lib/firebase/deals'
@@ -89,6 +90,7 @@ async function uploadToStorage(blob, storagePath) {
 // ── 1. User Profile ───────────────────────────────────────────────────────────
 function UserProfileSection() {
   const user = auth.currentUser
+  const { setUser } = useAuthStore()
   const [editing,     setEditing]     = useState(false)
   const [displayName, setDisplayName] = useState(user?.displayName || '')
   const [photoURL,    setPhotoURL]    = useState(user?.photoURL    || '')
@@ -107,6 +109,7 @@ function UserProfileSection() {
     setSaving(true)
     try {
       await updateProfile(auth.currentUser, { displayName: displayName.trim() || null })
+      setUser({ ...auth.currentUser })
       setEditing(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -130,6 +133,7 @@ function UserProfileSection() {
       const url = await uploadToStorage(blob, `profile-photos/${user.uid}`)
       await updateProfile(auth.currentUser, { photoURL: url })
       setPhotoURL(url)
+      setUser({ ...auth.currentUser })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
