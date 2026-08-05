@@ -1,6 +1,6 @@
 import { db } from '@/config/firebase'
 import {
-  collection, doc, addDoc, updateDoc, getDocs,
+  collection, doc, addDoc, getDocs,
   query, orderBy, serverTimestamp, writeBatch
 } from 'firebase/firestore'
 import { COLLECTIONS } from '@/config/constants'

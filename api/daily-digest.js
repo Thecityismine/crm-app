@@ -94,18 +94,18 @@ function daysBetween(isoA, isoB) {
 }
 
 function findBirthdays(contacts, today, windowDays = 3) {
-  const [, todayMM, todayDD] = today.split('-').map(Number)
   return contacts.filter((c) => {
     if (!c.birthday) return false
     const parts = c.birthday.split('-')
     if (parts.length < 3) return false
     const mm = Number(parts[1])
     const dd = Number(parts[2])
-    // Check within next windowDays (wrap around year-end)
+    // Walk forward from `today` (Central time, per todayLocal), wrapping
+    // year-end. Anchoring at noon UTC keeps the arithmetic clear of DST edges.
     for (let i = 0; i <= windowDays; i++) {
-      const d = new Date(new Date().setHours(0,0,0,0))
-      d.setDate(d.getDate() + i)
-      if (d.getMonth() + 1 === mm && d.getDate() === dd) return true
+      const d = new Date(today + 'T12:00:00Z')
+      d.setUTCDate(d.getUTCDate() + i)
+      if (d.getUTCMonth() + 1 === mm && d.getUTCDate() === dd) return true
     }
     return false
   })

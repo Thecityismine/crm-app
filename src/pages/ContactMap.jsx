@@ -19,7 +19,7 @@ function loadLSCache() {
   try { return JSON.parse(localStorage.getItem(LS_CACHE_KEY) || '{}') } catch { return {} }
 }
 function saveLSCache(c) {
-  try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify(c)) } catch {}
+  try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify(c)) } catch { /* private mode / quota — cache is best-effort */ }
 }
 
 // ── Firestore geocache helpers (persist across browsers / devices) ──────────

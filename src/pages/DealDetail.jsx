@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getDeal, updateDeal, deleteDeal } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
 import {
-  ArrowLeft, Edit2, Trash2, DollarSign, Calendar, User,
+  ArrowLeft, Edit2, Trash2, Calendar, User,
   ChevronRight, Kanban
 } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'

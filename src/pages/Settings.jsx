@@ -6,7 +6,7 @@ import { parseCSV, mapCSVRowToContact } from '@/utils/importMapper'
 import { batchImportContacts, getContacts } from '@/lib/firebase/contacts'
 import { getDeals } from '@/lib/firebase/deals'
 import { getTasks } from '@/lib/firebase/tasks'
-import { useSettingsStore, PIPELINE_TEMPLATES } from '@/store/settingsStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { useContactStore } from '@/store/contactStore'
 import {
   Upload, CheckCircle, AlertCircle, FileText, Plus, X,

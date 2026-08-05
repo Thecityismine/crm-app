@@ -4,7 +4,7 @@ import { useUIStore } from '@/store/uiStore'
 import { useContactStore } from '@/store/contactStore'
 import {
   Search, X, User, Briefcase, CheckSquare, Activity,
-  LayoutDashboard, Users, Building2, FileText, BarChart2,
+  LayoutDashboard, Users, Building2, BarChart2,
   Settings, Clock, Map, GitBranch,
 } from 'lucide-react'
 

@@ -8,7 +8,7 @@ import { getDeals } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
 import { PROPERTY_TYPES, LEASE_TYPES } from '@/config/constants'
 import {
-  ArrowLeft, Edit2, Trash2, MapPin, Building2, DollarSign,
+  ArrowLeft, Edit2, Trash2, MapPin, Building2,
   Layers, Plus, Users, Briefcase, AlertCircle, ChevronRight,
 } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'

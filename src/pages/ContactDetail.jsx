@@ -6,7 +6,7 @@ import { useContactStore } from '@/store/contactStore'
 import ContactHeader from '@/components/contacts/ContactHeader'
 import ContactTimeline from '@/components/contacts/ContactTimeline'
 import ContactForm from '@/components/contacts/ContactForm'
-import { ArrowLeft, Phone, MapPin, Calendar, Clock, BookOpen, GraduationCap } from 'lucide-react'
+import { ArrowLeft, MapPin, BookOpen } from 'lucide-react'
 
 const Field = ({ label, value }) => {
   if (!value) return null

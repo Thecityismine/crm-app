@@ -10,7 +10,7 @@ function loadCache() {
   try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}') } catch { return {} }
 }
 function saveCache(cache) {
-  try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)) } catch {}
+  try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)) } catch { /* private mode / quota — cache is best-effort */ }
 }
 
 async function geocodeLocation(query) {
