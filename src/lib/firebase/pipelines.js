@@ -3,7 +3,8 @@ import {
   collection, doc, addDoc, updateDoc, getDocs,
   query, orderBy, serverTimestamp, writeBatch
 } from 'firebase/firestore'
-import { COLLECTIONS, PIPELINE_TEMPLATES } from '@/config/constants'
+import { COLLECTIONS } from '@/config/constants'
+import { getPipelineConfig } from '@/lib/pipeline'
 
 export const getPipelines = async () => {
   const snap = await getDocs(query(collection(db, COLLECTIONS.PIPELINES), orderBy('createdAt')))
@@ -22,15 +23,19 @@ export const createPipelineWithStages = async (name, dealType, userId) => {
     name, dealType, isActive: true, createdBy: userId,
     createdAt: serverTimestamp()
   })
-  const stageNames = PIPELINE_TEMPLATES[dealType] || ['Stage 1', 'Stage 2', 'Stage 3']
+  // Unknown deal types fall back to the default template rather than placeholder names.
+  const config = getPipelineConfig(dealType)
   const batch = writeBatch(db)
-  stageNames.forEach((stageName, i) => {
+  config.stages.forEach((stageName, i) => {
     const stageRef = doc(collection(db, COLLECTIONS.PIPELINES, pipelineRef.id, 'stages'))
+    const won = config.isWon(stageName)
+    const lost = config.isLost(stageName)
     batch.set(stageRef, {
       name: stageName, orderIndex: i,
-      probability: Math.round((i / stageNames.length) * 100),
-      isWon: i === stageNames.length - 1,
-      isLost: false,
+      // Probability ramps across the active stages; terminals are fixed at 100/0.
+      probability: won ? 100 : lost ? 0 : Math.round((i / config.activeStages.length) * 100),
+      isWon: won,
+      isLost: lost,
     })
   })
   await batch.commit()

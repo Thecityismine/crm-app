@@ -5,6 +5,7 @@ import { logActivity } from '@/lib/firebase/activities'
 import { updateContact as apiUpdateContact, createContact } from '@/lib/firebase/contacts'
 import { createDeal } from '@/lib/firebase/deals'
 import { createTask } from '@/lib/firebase/tasks'
+import { usePipelineConfig } from '@/lib/pipeline'
 import Modal from '@/components/ui/Modal'
 import { Phone, Mail, Users, FileText, MessageSquare, AlertCircle, Search } from 'lucide-react'
 
@@ -283,6 +284,7 @@ function QuickAddContactModal({ onClose }) {
 // ── 3. New Deal ───────────────────────────────────────────────────────────────
 function QuickAddDealModal({ onClose }) {
   const { contacts } = useContactStore()
+  const config = usePipelineConfig()
   const [title,     setTitle]     = useState('')
   const [contactId, setContactId] = useState('')
   const [value,     setValue]     = useState('')
@@ -298,7 +300,7 @@ function QuickAddDealModal({ onClose }) {
       const contact = contacts.find((c) => c.id === contactId)
       await createDeal({
         title:       title.trim(),
-        stage:       'Lead',
+        stage:       config.stages[0],
         value:       value ? Number(value) : null,
         contactId:   contactId || null,
         contactName: contact ? `${contact.firstName} ${contact.lastName}` : null,

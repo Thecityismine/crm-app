@@ -8,6 +8,7 @@ import { refreshContacts } from '@/hooks/useContacts'
 import { getTasks, updateTask } from '@/lib/firebase/tasks'
 import { getDeals } from '@/lib/firebase/deals'
 import { getHealthScore, getNeedsAttention } from '@/lib/healthScore'
+import { usePipelineConfig } from '@/lib/pipeline'
 import Avatar from '@/components/ui/Avatar'
 import LogActivityModal from '@/components/activities/LogActivityModal'
 import {
@@ -82,8 +83,6 @@ const ACTIVITY_META = {
   note:    { label: 'Note',    Icon: FileText,      color: 'text-yellow-400' },
   sms:     { label: 'SMS',     Icon: MessageSquare, color: 'text-teal-400' },
 }
-
-const OPEN_STAGES = new Set(['Lead', 'Qualified', 'Proposal', 'Negotiation'])
 
 function getPriority(score) {
   if (score === 'cold')     return { label: 'High', className: 'text-red-400 bg-red-400/10 border border-red-400/20' }
@@ -175,6 +174,7 @@ function NeedsAttentionRow({ contact, onLog }) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { contacts } = useContacts()
+  const config = usePipelineConfig()
   const upcoming = getUpcomingBirthdays(contacts, 30)
 
   const allNeedsAttention = getNeedsAttention(contacts)
@@ -208,7 +208,7 @@ export default function Dashboard() {
   const openTasks = tasks.filter((t) => t.status !== 'completed')
   const tasksDueToday = openTasks.filter((t) => isTaskOverdue(t.dueDate) || isTaskToday(t.dueDate))
   const overdueTasksCount = openTasks.filter((t) => isTaskOverdue(t.dueDate)).length
-  const openDeals = deals.filter((d) => OPEN_STAGES.has(d.stage))
+  const openDeals = deals.filter((d) => config.isActive(d.stage))
   const pipelineValue = openDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0)
 
   const newThisMonth = contacts.filter(c => {
@@ -228,8 +228,7 @@ export default function Dashboard() {
     return 0
   }).slice(0, 5)
 
-  const stageOrder = ['Lead', 'Qualified', 'Proposal', 'Negotiation']
-  const dealsByStage = stageOrder
+  const dealsByStage = config.activeStages
     .map((stage) => {
       const stageDeals = openDeals.filter((d) => d.stage === stage)
       return { stage, count: stageDeals.length, value: stageDeals.reduce((s, d) => s + (Number(d.value) || 0), 0) }
@@ -496,7 +495,7 @@ export default function Dashboard() {
                         {contact ? `${contact.firstName} ${contact.lastName}` : 'Unknown'}
                         <span className="text-gray-600"> · {meta.label}</span>
                       </p>
-                      {a.note && <p className="text-xs text-gray-600 truncate mt-0.5">{a.note}</p>}
+                      {a.notes && <p className="text-xs text-gray-600 truncate mt-0.5">{a.notes}</p>}
                     </div>
                     <span className="text-xs text-gray-600 flex-shrink-0 whitespace-nowrap">{fmtRelative(a.occurredAt)}</span>
                   </div>

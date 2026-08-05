@@ -10,15 +10,11 @@ import {
 import KanbanColumn from './KanbanColumn'
 import KanbanCard from './KanbanCard'
 import { getDeals, updateDeal } from '@/lib/firebase/deals'
-import { useSettingsStore, PIPELINE_TEMPLATES } from '@/store/settingsStore'
+import { usePipelineConfig } from '@/lib/pipeline'
 import { X } from 'lucide-react'
 
-// Kept for backward-compat; consumers should prefer getPipelineStages() from the store
-export const PIPELINE_STAGES = PIPELINE_TEMPLATES.default
-
 export default function KanbanBoard({ onAddDeal, onDealClick, refreshKey }) {
-  const pipelineTemplate = useSettingsStore((s) => s.pipelineTemplate)
-  const stages = PIPELINE_TEMPLATES[pipelineTemplate] || PIPELINE_TEMPLATES.default
+  const { stages } = usePipelineConfig()
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeDeal, setActiveDeal] = useState(null)

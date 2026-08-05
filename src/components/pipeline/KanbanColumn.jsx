@@ -1,6 +1,7 @@
 import { useDroppable } from '@dnd-kit/core'
 import KanbanCard from './KanbanCard'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { usePipelineConfig, stageAccentBorderClass } from '@/lib/pipeline'
 
 const formatTotal = (v) => {
   if (!v) return null
@@ -9,19 +10,11 @@ const formatTotal = (v) => {
   return `$${v}`
 }
 
-const STAGE_COLORS = {
-  Lead:        'border-gray-600',
-  Qualified:   'border-blue-500/60',
-  Proposal:    'border-yellow-500/60',
-  Negotiation: 'border-orange-500/60',
-  Won:         'border-emerald-500/60',
-  Lost:        'border-red-500/40',
-}
-
 export default function KanbanColumn({ stage, deals, onCardClick, onAddDeal, collapsed, onToggleCollapse }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
+  const config = usePipelineConfig()
   const total = deals.reduce((sum, d) => sum + (Number(d.value) || 0), 0)
-  const accentBorder = STAGE_COLORS[stage] || 'border-gray-700'
+  const accentBorder = stageAccentBorderClass(stage, config)
 
   if (collapsed) {
     return (

@@ -46,10 +46,6 @@ export const COLLECTIONS = {
   PROJECT_LINKS: 'project_links',
 }
 
-// CRE Pipeline stage templates
-export const PIPELINE_TEMPLATES = {
-  leasing: ['Prospect', 'Tour', 'Proposal', 'Negotiation', 'Execution', 'Occupancy'],
-  acquisition: ['Identification', 'Underwriting', 'LOI', 'Due Diligence', 'Closing'],
-  development: ['Concept', 'Entitlement', 'Design', 'Construction', 'Stabilization'],
-  lending: ['Application', 'Underwriting', 'Commitment', 'Closing', 'Funded'],
-}
+// Pipeline stage templates live in @/store/settingsStore and are consumed
+// through @/lib/pipeline — the single source of truth for stage reasoning.
+// A second, conflicting copy used to live here; don't reintroduce one.

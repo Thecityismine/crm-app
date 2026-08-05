@@ -4,6 +4,7 @@ import { getDeals } from '@/lib/firebase/deals'
 import { getTasks } from '@/lib/firebase/tasks'
 import { getRecentActivities } from '@/lib/firebase/activities'
 import { getHealthScore } from '@/lib/healthScore'
+import { usePipelineConfig, stageBarClass } from '@/lib/pipeline'
 import { Download, TrendingUp } from 'lucide-react'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -16,17 +17,6 @@ const fmtCompact = (n) => {
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-
-const PIPELINE_STAGES = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost']
-
-const STAGE_COLORS = {
-  Lead:        'bg-gray-500',
-  Qualified:   'bg-blue-500',
-  Proposal:    'bg-yellow-500',
-  Negotiation: 'bg-orange-500',
-  Won:         'bg-emerald-500',
-  Lost:        'bg-red-500/60',
-}
 
 const HEALTH_CONFIG = [
   { key: 'active',   label: 'On Track',    color: 'bg-green-500',  badge: 'bg-green-500/15 text-green-400' },
@@ -118,6 +108,7 @@ function CardHeader({ title, sub }) {
 
 export default function Reports() {
   const { contacts } = useContactStore()
+  const config = usePipelineConfig()
   const [deals,      setDeals]      = useState([])
   const [tasks,      setTasks]      = useState([])
   const [activities, setActivities] = useState([])
@@ -157,12 +148,12 @@ export default function Reports() {
 
   // ── Pipeline by Stage (current snapshot) ──────────────────────────────────
   const stageStats = useMemo(() =>
-    PIPELINE_STAGES.map((stage) => {
+    config.stages.map((stage) => {
       const sd = deals.filter((d) => d.stage === stage)
       return { stage, count: sd.length, value: sd.reduce((s, d) => s + (Number(d.value) || 0), 0) }
-    }), [deals])
+    }), [deals, config])
 
-  const activeDeals         = deals.filter((d) => !['Won', 'Lost'].includes(d.stage))
+  const activeDeals         = deals.filter((d) => config.isActive(d.stage))
   const activePipelineValue = activeDeals.reduce((s, d) => s + (Number(d.value) || 0), 0)
   const maxStageCount       = Math.max(...stageStats.map((s) => s.count), 1)
 
@@ -175,16 +166,20 @@ export default function Reports() {
     })
   }, [deals, rangeStart])
 
-  const rangedWon   = rangedDeals.filter((d) => d.stage === 'Won')
-  const rangedLost  = rangedDeals.filter((d) => d.stage === 'Lost')
+  const rangedWon   = rangedDeals.filter((d) => config.isWon(d.stage))
+  const rangedLost  = rangedDeals.filter((d) => config.isLost(d.stage))
   const wonValue    = rangedWon.reduce((s, d)  => s + (Number(d.value) || 0), 0)
   const lostValue   = rangedLost.reduce((s, d) => s + (Number(d.value) || 0), 0)
   const closedCount = rangedWon.length + rangedLost.length
-  const winRate     = closedCount > 0 ? Math.round((rangedWon.length / closedCount) * 100) : null
+  // Win rate is meaningless without a losing stage to divide against.
+  const winRate     = config.lost && closedCount > 0
+    ? Math.round((rangedWon.length / closedCount) * 100)
+    : null
+  const closedLabel = config.lost ? `${config.won} vs ${config.lost}` : config.won
 
   // ── Pipeline Velocity (all Won deals) ─────────────────────────────────────
   const avgVelocityDays = useMemo(() => {
-    const wonWithDates = deals.filter((d) => d.stage === 'Won' && d.createdAt)
+    const wonWithDates = deals.filter((d) => config.isWon(d.stage) && d.createdAt)
     if (!wonWithDates.length) return null
     const total = wonWithDates.reduce((sum, d) => {
       const from = new Date(d.createdAt)
@@ -192,7 +187,7 @@ export default function Reports() {
       return sum + Math.max(0, (to - from) / 86400000)
     }, 0)
     return Math.round(total / wonWithDates.length)
-  }, [deals])
+  }, [deals, config])
 
   // ── Activity by Type (date-filtered) ──────────────────────────────────────
   const { activityRows, activityTotal } = useMemo(() => {
@@ -249,9 +244,9 @@ export default function Reports() {
       ['Stage', 'Deals', 'Value ($)'],
       ...stageStats.map(({ stage, count, value }) => [stage, count, value]),
       [],
-      ...section(`WON VS LOST (${periodLabel})`),
-      ['Won',           rangedWon.length,  wonValue],
-      ['Lost',          rangedLost.length, lostValue],
+      ...section(`${closedLabel.toUpperCase()} (${periodLabel})`),
+      [config.won,      rangedWon.length,  wonValue],
+      ...(config.lost ? [[config.lost, rangedLost.length, lostValue]] : []),
       ['Win Rate',      winRate !== null ? winRate + '%' : 'N/A'],
       ['Avg Days to Close', avgVelocityDays ?? 'N/A'],
       [],
@@ -329,7 +324,7 @@ export default function Reports() {
           color={activePipelineValue > 0 ? 'text-blue-400' : 'text-gray-100'}
         />
         <StatCard
-          label={`Won Value · ${periodLabel}`}
+          label={`${config.won} Value · ${periodLabel}`}
           value={fmtCompact(wonValue)}
           sub={`${rangedWon.length} deal${rangedWon.length !== 1 ? 's' : ''} closed`}
           color={wonValue > 0 ? 'text-emerald-400' : 'text-gray-100'}
@@ -365,7 +360,7 @@ export default function Reports() {
           ) : (
             <div className="space-y-3">
               {stageStats.map(({ stage, count, value }) => (
-                <BarRow key={stage} label={stage} count={count} total={maxStageCount} value={value} color={STAGE_COLORS[stage]} />
+                <BarRow key={stage} label={stage} count={count} total={maxStageCount} value={value} color={stageBarClass(stage, config)} />
               ))}
             </div>
           )}
@@ -378,24 +373,26 @@ export default function Reports() {
 
         {/* Won vs Lost + Pipeline Velocity */}
         <div className="card p-5">
-          <CardHeader title="Won vs Lost" sub={periodLabel} />
+          <CardHeader title={closedLabel} sub={periodLabel} />
           {closedCount === 0 ? (
             <p className="text-sm text-gray-600 text-center py-6">
               {deals.length === 0 ? 'No deals yet' : 'No closed deals in this period'}
             </p>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className={`grid gap-3 mb-4 ${config.lost ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
                   <p className="text-2xl font-bold text-emerald-400">{rangedWon.length}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Won</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{config.won}</p>
                   {wonValue > 0 && <p className="text-xs text-emerald-500 font-medium mt-1">{fmtCompact(wonValue)}</p>}
                 </div>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
-                  <p className="text-2xl font-bold text-red-400">{rangedLost.length}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Lost</p>
-                  {lostValue > 0 && <p className="text-xs text-red-400 font-medium mt-1">{fmtCompact(lostValue)}</p>}
-                </div>
+                {config.lost && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-red-400">{rangedLost.length}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{config.lost}</p>
+                    {lostValue > 0 && <p className="text-xs text-red-400 font-medium mt-1">{fmtCompact(lostValue)}</p>}
+                  </div>
+                )}
               </div>
               {winRate !== null && (
                 <div>

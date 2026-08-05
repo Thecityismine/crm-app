@@ -5,11 +5,10 @@ import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/lib
 import { getDeals } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
 import { useSettingsStore } from '@/store/settingsStore'
+import { usePipelineConfig } from '@/lib/pipeline'
 import CompanyCard, { CompanyListRow } from '@/components/companies/CompanyCard'
 import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
-
-const OPEN_STAGES = new Set(['Lead', 'Qualified', 'Proposal', 'Negotiation'])
 
 const SORT_OPTIONS = [
   { value: 'name',     label: 'Name A–Z' },
@@ -249,6 +248,7 @@ function CompanyModal({ company, onClose, onSave, onDelete, industryOptions }) {
 export default function Companies() {
   const { contacts } = useContactStore()
   const { industryOptions } = useSettingsStore()
+  const config = usePipelineConfig()
   const [companies, setCompanies] = useState([])
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -276,7 +276,7 @@ export default function Companies() {
   const dealCounts = useMemo(() => {
     const counts = {}
     deals.forEach((d) => {
-      if (!OPEN_STAGES.has(d.stage)) return
+      if (!config.isActive(d.stage)) return
       const contact = contacts.find((c) => c.id === d.contactId)
       if (contact?.company) {
         const key = contact.company.toLowerCase()
@@ -284,7 +284,7 @@ export default function Companies() {
       }
     })
     return counts
-  }, [deals, contacts])
+  }, [deals, contacts, config])
 
   // Unique industries for filter tabs — pinned types always first
   const PINNED_INDUSTRIES = ['Architect', 'MEP Engineer', 'Contractor']

@@ -9,17 +9,7 @@ import {
 import Avatar from '@/components/ui/Avatar'
 import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import Modal from '@/components/ui/Modal'
-
-const STAGES = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost']
-
-const STAGE_STYLES = {
-  Lead:        'bg-gray-700 text-gray-300 border-gray-600',
-  Qualified:   'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  Proposal:    'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-  Negotiation: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-  Won:         'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  Lost:        'bg-red-500/15 text-red-400 border-red-500/20',
-}
+import { usePipelineConfig, stageBorderBadgeClass } from '@/lib/pipeline'
 
 const fmt = (n) =>
   n > 0
@@ -29,11 +19,11 @@ const fmt = (n) =>
 const fmtDate = (d) =>
   d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null
 
-function EditModal({ deal, contacts, onClose, onSave }) {
+function EditModal({ deal, contacts, config, onClose, onSave }) {
   const [form, setForm] = useState({
     title:       deal.title       || '',
     value:       deal.value       || '',
-    stage:       deal.stage       || 'Lead',
+    stage:       deal.stage       || config.stages[0],
     contactId:   deal.contactId   || '',
     contactName: deal.contactName || '',
     closingDate: deal.closingDate || '',
@@ -81,7 +71,7 @@ function EditModal({ deal, contacts, onClose, onSave }) {
           <div>
             <label className="label">Stage</label>
             <select className="input" value={form.stage} onChange={(e) => setForm((f) => ({ ...f, stage: e.target.value }))}>
-              {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {config.stages.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
         </div>
@@ -116,6 +106,7 @@ export default function DealDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { contacts } = useContactStore()
+  const config = usePipelineConfig()
 
   const [deal, setDeal] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -173,7 +164,7 @@ export default function DealDetail() {
 
   const isPastClose = deal.closingDate
     && new Date(deal.closingDate + 'T12:00:00') < new Date()
-    && deal.stage !== 'Won' && deal.stage !== 'Lost'
+    && config.isActive(deal.stage)
 
   return (
     <div className="max-w-3xl">
@@ -188,7 +179,7 @@ export default function DealDetail() {
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border ${STAGE_STYLES[deal.stage] || STAGE_STYLES.Lead}`}>
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border ${stageBorderBadgeClass(deal.stage, config)}`}>
                 {deal.stage}
               </span>
               {deal.value > 0 && (
@@ -242,7 +233,7 @@ export default function DealDetail() {
             <h2 className="text-sm font-semibold text-gray-300">Pipeline Stage</h2>
           </div>
           <div className="flex items-center gap-1 flex-wrap">
-            {STAGES.map((stage, i) => {
+            {config.stages.map((stage, i) => {
               const isCurrent = deal.stage === stage
               const isMoving = movingTo === stage
               return (
@@ -252,13 +243,13 @@ export default function DealDetail() {
                     disabled={!!movingTo}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       isCurrent
-                        ? `${STAGE_STYLES[stage]} font-semibold`
+                        ? `${stageBorderBadgeClass(stage, config)} font-semibold`
                         : 'border-gray-700 text-gray-600 hover:text-gray-400 hover:border-gray-500'
                     } ${isMoving ? 'opacity-60' : ''}`}
                   >
                     {stage}
                   </button>
-                  {i < STAGES.length - 1 && (
+                  {i < config.stages.length - 1 && (
                     <ChevronRight size={12} className="text-gray-700 mx-0.5 flex-shrink-0" />
                   )}
                 </div>
@@ -305,7 +296,7 @@ export default function DealDetail() {
       )}
 
       {showEdit && (
-        <EditModal deal={deal} contacts={contacts} onClose={() => setShowEdit(false)} onSave={handleSave} />
+        <EditModal deal={deal} contacts={contacts} config={config} onClose={() => setShowEdit(false)} onSave={handleSave} />
       )}
     </div>
   )

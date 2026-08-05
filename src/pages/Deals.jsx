@@ -6,20 +6,9 @@ import {
 } from 'lucide-react'
 import { getDeals, createDeal, updateDeal, deleteDeal } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
+import { usePipelineConfig, stageBadgeClass } from '@/lib/pipeline'
 import Modal from '@/components/ui/Modal'
 import { Trash2 } from 'lucide-react'
-
-const STAGES = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost']
-const ACTIVE_STAGES = new Set(['Lead', 'Qualified', 'Proposal', 'Negotiation'])
-
-const STAGE_STYLES = {
-  Lead:        'bg-gray-700 text-gray-300',
-  Qualified:   'bg-blue-500/20 text-blue-300',
-  Proposal:    'bg-yellow-500/20 text-yellow-300',
-  Negotiation: 'bg-orange-500/20 text-orange-300',
-  Won:         'bg-emerald-500/20 text-emerald-300',
-  Lost:        'bg-red-500/15 text-red-400',
-}
 
 const fmt = (n) =>
   n > 0
@@ -37,8 +26,8 @@ const fmtDate = (d) =>
   d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 
 // Close date urgency helpers
-const getCloseDateMeta = (dateStr, stage) => {
-  if (!dateStr || !ACTIVE_STAGES.has(stage)) {
+const getCloseDateMeta = (dateStr, stage, config) => {
+  if (!dateStr || !config.isActive(stage)) {
     return { color: 'text-gray-500', label: fmtDate(dateStr), badge: null }
   }
   const d = new Date(dateStr + 'T12:00:00')
@@ -55,19 +44,19 @@ const getCloseDateMeta = (dateStr, stage) => {
   return { color: 'text-gray-500', label: fmtDate(dateStr), badge: null }
 }
 
-const isStale = (deal) => {
-  if (!ACTIVE_STAGES.has(deal.stage)) return false
+const isStale = (deal, config) => {
+  if (!config.isActive(deal.stage)) return false
   const ref = deal.updatedAt || deal.createdAt
   if (!ref) return false
   return Math.floor((Date.now() - new Date(ref)) / 86400000) >= 30
 }
 
 // ── Deal modal ─────────────────────────────────────────────────────────────
-function DealModal({ deal, initialStage, contacts, onClose, onSave, onDelete }) {
+function DealModal({ deal, initialStage, contacts, config, onClose, onSave, onDelete }) {
   const [form, setForm] = useState({
     title:       deal?.title       || '',
     value:       deal?.value       || '',
-    stage:       deal?.stage       || initialStage || 'Lead',
+    stage:       deal?.stage       || initialStage || config.stages[0],
     contactId:   deal?.contactId   || '',
     contactName: deal?.contactName || '',
     closingDate: deal?.closingDate || '',
@@ -123,7 +112,7 @@ function DealModal({ deal, initialStage, contacts, onClose, onSave, onDelete }) 
           <div>
             <label className="label">Stage</label>
             <select className="input" value={form.stage} onChange={(e) => setForm((f) => ({ ...f, stage: e.target.value }))}>
-              {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {config.stages.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
         </div>
@@ -175,16 +164,20 @@ function SortButton({ field, current, dir, onSort }) {
   )
 }
 
-const FILTER_TABS = [
+// Tab labels follow the active pipeline template's terminal stage names
+// (e.g. "Funded" / "Declined" for lending). Templates without a lost stage
+// simply don't get that tab.
+const buildFilterTabs = (config) => [
   { key: 'all',    label: 'All' },
   { key: 'active', label: 'Active' },
-  { key: 'won',    label: 'Won' },
-  { key: 'lost',   label: 'Lost' },
+  { key: 'won',    label: config.won },
+  ...(config.lost ? [{ key: 'lost', label: config.lost }] : []),
 ]
 
 export default function Deals() {
   const navigate = useNavigate()
   const { contacts } = useContactStore()
+  const config = usePipelineConfig()
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -205,18 +198,22 @@ export default function Deals() {
 
   const handleMoveStage = async (e, deal) => {
     e.stopPropagation()
-    const idx = STAGES.indexOf(deal.stage)
-    if (idx < 0 || idx >= STAGES.length - 1) return
-    const newStage = STAGES[idx + 1]
+    const idx = config.stages.indexOf(deal.stage)
+    if (idx < 0 || idx >= config.stages.length - 1) return
+    const newStage = config.stages[idx + 1]
     setDeals((prev) => prev.map((d) => d.id === deal.id ? { ...d, stage: newStage } : d))
-    try { await updateDeal(deal.id, { stage: newStage }) } catch { /* revert on fail */ }
+    try {
+      await updateDeal(deal.id, { stage: newStage, stageEnteredAt: new Date().toISOString() })
+    } catch {
+      setDeals((prev) => prev.map((d) => d.id === deal.id ? { ...d, stage: deal.stage } : d))
+    }
   }
 
   // Overall stats (always from full deal list, not filtered)
   const stats = useMemo(() => {
-    const active = deals.filter((d) => ACTIVE_STAGES.has(d.stage))
-    const won = deals.filter((d) => d.stage === 'Won')
-    const lost = deals.filter((d) => d.stage === 'Lost')
+    const active = deals.filter((d) => config.isActive(d.stage))
+    const won = deals.filter((d) => config.isWon(d.stage))
+    const lost = deals.filter((d) => config.isLost(d.stage))
     return {
       pipelineCount: active.length,
       pipelineValue: active.reduce((s, d) => s + (Number(d.value) || 0), 0),
@@ -224,21 +221,21 @@ export default function Deals() {
       wonValue: won.reduce((s, d) => s + (Number(d.value) || 0), 0),
       lostCount: lost.length,
     }
-  }, [deals])
+  }, [deals, config])
 
   const counts = useMemo(() => ({
     all:    deals.length,
-    active: deals.filter((d) => ACTIVE_STAGES.has(d.stage)).length,
-    won:    deals.filter((d) => d.stage === 'Won').length,
-    lost:   deals.filter((d) => d.stage === 'Lost').length,
-  }), [deals])
+    active: deals.filter((d) => config.isActive(d.stage)).length,
+    won:    deals.filter((d) => config.isWon(d.stage)).length,
+    lost:   deals.filter((d) => config.isLost(d.stage)).length,
+  }), [deals, config])
 
   const filtered = useMemo(() => {
     let list = deals
 
-    if (filter === 'active') list = list.filter((d) => ACTIVE_STAGES.has(d.stage))
-    else if (filter === 'won')  list = list.filter((d) => d.stage === 'Won')
-    else if (filter === 'lost') list = list.filter((d) => d.stage === 'Lost')
+    if (filter === 'active') list = list.filter((d) => config.isActive(d.stage))
+    else if (filter === 'won')  list = list.filter((d) => config.isWon(d.stage))
+    else if (filter === 'lost') list = list.filter((d) => config.isLost(d.stage))
 
     if (stageFilter) list = list.filter((d) => d.stage === stageFilter)
 
@@ -255,14 +252,14 @@ export default function Deals() {
       let av, bv
       if (sortField === 'value')       { av = Number(a.value) || 0; bv = Number(b.value) || 0 }
       else if (sortField === 'closingDate') { av = a.closingDate || ''; bv = b.closingDate || '' }
-      else if (sortField === 'stage')  { av = STAGES.indexOf(a.stage); bv = STAGES.indexOf(b.stage) }
+      else if (sortField === 'stage')  { av = config.stages.indexOf(a.stage); bv = config.stages.indexOf(b.stage) }
       else if (sortField === 'title')  { av = a.title?.toLowerCase() || ''; bv = b.title?.toLowerCase() || '' }
       else { av = a.createdAt || ''; bv = b.createdAt || '' }
       if (av < bv) return sortDir === 'asc' ? -1 : 1
       if (av > bv) return sortDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [deals, filter, stageFilter, search, sortField, sortDir])
+  }, [deals, filter, stageFilter, search, sortField, sortDir, config])
 
   const totalValue = useMemo(
     () => filtered.reduce((s, d) => s + (Number(d.value) || 0), 0),
@@ -318,23 +315,27 @@ export default function Deals() {
         <div className="flex items-center gap-2">
           <Trophy size={13} className="text-emerald-400" />
           <span className="text-sm text-gray-400">
-            <span className="font-semibold text-emerald-400">{stats.wonCount}</span> won
+            <span className="font-semibold text-emerald-400">{stats.wonCount}</span> {config.won.toLowerCase()}
             {stats.wonValue > 0 && <span className="text-emerald-400 ml-1">· {fmtCompact(stats.wonValue)}</span>}
           </span>
         </div>
-        <div className="w-px h-4 bg-gray-800" />
-        <div className="flex items-center gap-2">
-          <XCircle size={13} className="text-red-400" />
-          <span className="text-sm text-gray-400">
-            <span className="font-semibold text-red-400">{stats.lostCount}</span> lost
-          </span>
-        </div>
+        {config.lost && (
+          <>
+            <div className="w-px h-4 bg-gray-800" />
+            <div className="flex items-center gap-2">
+              <XCircle size={13} className="text-red-400" />
+              <span className="text-sm text-gray-400">
+                <span className="font-semibold text-red-400">{stats.lostCount}</span> {config.lost.toLowerCase()}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Filter tabs + search + stage filter */}
       <div className="flex items-center gap-2 mb-1 flex-wrap">
         <div className="flex gap-1 border-b border-gray-800 flex-1 min-w-0">
-          {FILTER_TABS.map(({ key, label }) => (
+          {buildFilterTabs(config).map(({ key, label }) => (
             <button key={key} onClick={() => { setFilter(key); setStageFilter('') }}
               className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
                 filter === key && !stageFilter ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -355,7 +356,7 @@ export default function Deals() {
           onChange={(e) => { setStageFilter(e.target.value); setFilter('all') }}
         >
           <option value="">All stages</option>
-          {STAGES.map((s) => (
+          {config.stages.map((s) => (
             <option key={s} value={s}>{s} ({deals.filter(d => d.stage === s).length})</option>
           ))}
         </select>
@@ -431,9 +432,9 @@ export default function Deals() {
             </thead>
             <tbody>
               {filtered.map((deal) => {
-                const closeMeta = getCloseDateMeta(deal.closingDate, deal.stage)
-                const stale = isStale(deal)
-                const canAdvance = ACTIVE_STAGES.has(deal.stage)
+                const closeMeta = getCloseDateMeta(deal.closingDate, deal.stage, config)
+                const stale = isStale(deal, config)
+                const canAdvance = config.isActive(deal.stage)
                 return (
                   <tr
                     key={deal.id}
@@ -462,7 +463,7 @@ export default function Deals() {
 
                     {/* Stage */}
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STAGE_STYLES[deal.stage] || 'bg-gray-700 text-gray-300'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${stageBadgeClass(deal.stage, config)}`}>
                         {deal.stage}
                       </span>
                     </td>
@@ -498,7 +499,7 @@ export default function Deals() {
                           <button
                             onClick={(e) => handleMoveStage(e, deal)}
                             className="p-1.5 rounded text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-                            title={`Move to ${STAGES[STAGES.indexOf(deal.stage) + 1]}`}
+                            title={`Move to ${config.stages[config.stages.indexOf(deal.stage) + 1]}`}
                           >
                             <ChevronRight size={13} />
                           </button>
@@ -524,8 +525,9 @@ export default function Deals() {
       {modal && (
         <DealModal
           deal={modal.mode === 'edit' ? modal.deal : null}
-          initialStage={modal.mode === 'add' ? 'Lead' : undefined}
+          initialStage={modal.mode === 'add' ? config.stages[0] : undefined}
           contacts={contacts}
+          config={config}
           onClose={() => setModal(null)}
           onSave={handleSave}
           onDelete={modal.mode === 'edit' ? handleDelete : undefined}

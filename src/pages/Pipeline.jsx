@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import KanbanBoard, { PIPELINE_STAGES } from '@/components/pipeline/KanbanBoard'
+import KanbanBoard from '@/components/pipeline/KanbanBoard'
 import Modal from '@/components/ui/Modal'
 import { createDeal, updateDeal, deleteDeal } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
+import { usePipelineConfig } from '@/lib/pipeline'
 
-function DealModal({ deal, initialStage, contacts, onClose, onSave, onDelete }) {
+function DealModal({ deal, initialStage, contacts, config, onClose, onSave, onDelete }) {
   const [form, setForm] = useState({
     title:       deal?.title       || '',
     value:       deal?.value       || '',
-    stage:       deal?.stage       || initialStage || 'Lead',
+    stage:       deal?.stage       || initialStage || config.stages[0],
     contactId:   deal?.contactId   || '',
     contactName: deal?.contactName || '',
     closingDate: deal?.closingDate || '',
@@ -87,7 +88,7 @@ function DealModal({ deal, initialStage, contacts, onClose, onSave, onDelete }) 
               value={form.stage}
               onChange={(e) => setForm((f) => ({ ...f, stage: e.target.value }))}
             >
-              {PIPELINE_STAGES.map((s) => (
+              {config.stages.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
@@ -167,12 +168,13 @@ function DealModal({ deal, initialStage, contacts, onClose, onSave, onDelete }) 
 
 export default function Pipeline() {
   const { contacts } = useContactStore()
+  const config = usePipelineConfig()
   const [refreshKey, setRefreshKey] = useState(0)
   const [modal, setModal] = useState(null) // null | { mode: 'add', stage } | { mode: 'edit', deal }
 
   const refresh = () => setRefreshKey((k) => k + 1)
 
-  const handleAddDeal = (stage = 'Lead') => setModal({ mode: 'add', stage })
+  const handleAddDeal = (stage) => setModal({ mode: 'add', stage: stage || config.stages[0] })
   const handleDealClick = (deal) => setModal({ mode: 'edit', deal })
 
   const handleSave = async (data) => {
@@ -215,6 +217,7 @@ export default function Pipeline() {
           deal={modal.mode === 'edit' ? modal.deal : null}
           initialStage={modal.mode === 'add' ? modal.stage : undefined}
           contacts={contacts}
+          config={config}
           onClose={() => setModal(null)}
           onSave={handleSave}
           onDelete={modal.mode === 'edit' ? handleDelete : undefined}
