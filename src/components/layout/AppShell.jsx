@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
@@ -9,6 +9,16 @@ import GlobalModals from './GlobalModals'
 import { useUIStore } from '@/store/uiStore'
 import { useContactStore } from '@/store/contactStore'
 import { useNotifications } from '@/hooks/useNotifications'
+
+// Matches the in-page loading style used by Deals, Pipeline and DealDetail,
+// so a chunk fetch looks the same as a data fetch rather than a layout jump.
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center py-20 text-gray-600 text-sm">
+      Loading...
+    </div>
+  )
+}
 
 export default function AppShell() {
   const { commandBarOpen, openQuickAction, addRecentlyViewed, openCommandBar } = useUIStore()
@@ -72,7 +82,10 @@ export default function AppShell() {
         <TopBar />
         {/* Bottom padding clears the mobile bottom-nav and the floating action button */}
         <main className="flex-1 overflow-y-auto px-4 py-5 pb-32 sm:p-6 sm:pb-24">
-          <Outlet />
+          {/* Route chunks load here, so the sidebar and top bar stay on screen */}
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       <BottomNav />

@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
-import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,7 +13,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
+// Image uploads go through the Storage REST API, so the Storage SDK is not
+// initialised here — importing it pulled the whole module into the entry chunk.
 export const db = getFirestore(app)
 export const auth = getAuth(app)
-export const storage = getStorage(app)
 export default app

@@ -1,26 +1,34 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import AppShell from '@/components/layout/AppShell'
-import Login from '@/pages/Login'
-import Dashboard from '@/pages/Dashboard'
-import Contacts from '@/pages/Contacts'
-import ContactDetail from '@/pages/ContactDetail'
-import Companies from '@/pages/Companies'
-import CompanyDetail from '@/pages/CompanyDetail'
-import Deals from '@/pages/Deals'
-import DealDetail from '@/pages/DealDetail'
-import Pipeline from '@/pages/Pipeline'
-import Properties from '@/pages/Properties'
-import PropertyDetail from '@/pages/PropertyDetail'
-import ContactMap from '@/pages/ContactMap'
-import Tasks from '@/pages/Tasks'
-import Emails from '@/pages/Emails'
-import Reports from '@/pages/Reports'
-import Settings from '@/pages/Settings'
-import NotFound from '@/pages/NotFound'
-import { useEffect } from 'react'
+import { lazy, useEffect } from 'react'
 import { auth } from '@/config/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
+
+// Eager: Login is the first paint for signed-out users, and NotFound is small
+// enough that a chunk fetch would cost more than it saves.
+import Login from '@/pages/Login'
+import NotFound from '@/pages/NotFound'
+
+// Lazy: everything behind auth. Each route becomes its own chunk, so the
+// initial download no longer carries all 15 pages — notably Leaflet, which
+// only Map and Properties need. AppShell renders the Suspense boundary, so
+// the sidebar and top bar stay put while a page chunk loads.
+const Dashboard      = lazy(() => import('@/pages/Dashboard'))
+const Contacts       = lazy(() => import('@/pages/Contacts'))
+const ContactDetail  = lazy(() => import('@/pages/ContactDetail'))
+const Companies      = lazy(() => import('@/pages/Companies'))
+const CompanyDetail  = lazy(() => import('@/pages/CompanyDetail'))
+const Deals          = lazy(() => import('@/pages/Deals'))
+const DealDetail     = lazy(() => import('@/pages/DealDetail'))
+const Pipeline       = lazy(() => import('@/pages/Pipeline'))
+const Properties     = lazy(() => import('@/pages/Properties'))
+const PropertyDetail = lazy(() => import('@/pages/PropertyDetail'))
+const ContactMap     = lazy(() => import('@/pages/ContactMap'))
+const Tasks          = lazy(() => import('@/pages/Tasks'))
+const Emails         = lazy(() => import('@/pages/Emails'))
+const Reports        = lazy(() => import('@/pages/Reports'))
+const Settings       = lazy(() => import('@/pages/Settings'))
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuthStore()
