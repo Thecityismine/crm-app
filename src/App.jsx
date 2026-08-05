@@ -59,8 +59,9 @@ export default function App() {
           <Route path="emails" element={<Emails />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          {/* Catch-all lives inside AppShell so a bad URL keeps its navigation */}
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

@@ -4,7 +4,9 @@ import { persist } from 'zustand/middleware'
 export const useUIStore = create(
   persist(
     (set) => ({
-      sidebarOpen:    true,
+      // Closed by default on phones — the mobile sidebar is an overlay, so
+      // starting it open would cover the app on every cold load.
+      sidebarOpen:    typeof window === 'undefined' || window.innerWidth >= 640,
       commandBarOpen: false,
       activeModal:    null,
       toast:          null,

@@ -11,7 +11,7 @@ import { useContactStore } from '@/store/contactStore'
 import { useNotifications } from '@/hooks/useNotifications'
 
 export default function AppShell() {
-  const { commandBarOpen, openQuickAction, addRecentlyViewed } = useUIStore()
+  const { commandBarOpen, openQuickAction, addRecentlyViewed, openCommandBar } = useUIStore()
   const { contacts } = useContactStore()
   const location = useLocation()
   useNotifications()
@@ -31,10 +31,19 @@ export default function AppShell() {
     }
   }, [location.pathname, contacts])
 
-  // Global keyboard shortcuts: N · D · T · L
+  // Global keyboard shortcuts: ⌘K / Ctrl+K to search · N · D · T · L
   // Read store state directly so the handler stays stable (single registration)
   useEffect(() => {
     const handler = (e) => {
+      // ⌘K works from anywhere, including while typing in a field
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault()
+        const { commandBarOpen: open, closeCommandBar } = useUIStore.getState()
+        if (open) closeCommandBar()
+        else openCommandBar()
+        return
+      }
+
       const tag = e.target.tagName
       if (
         tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
@@ -54,14 +63,15 @@ export default function AppShell() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [openQuickAction])
+  }, [openQuickAction, openCommandBar])
 
   return (
     <div className="flex h-screen bg-black overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <TopBar />
-        <main className="flex-1 overflow-y-auto px-4 py-5 pb-28 sm:p-6 sm:pb-6">
+        {/* Bottom padding clears the mobile bottom-nav and the floating action button */}
+        <main className="flex-1 overflow-y-auto px-4 py-5 pb-32 sm:p-6 sm:pb-24">
           <Outlet />
         </main>
       </div>

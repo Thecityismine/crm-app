@@ -13,3 +13,6 @@ crm-app/
 
 .vercel
 .env*.local
+
+# Local Claude Code config and worktrees (worktrees hold a full app copy)
+.claude/
