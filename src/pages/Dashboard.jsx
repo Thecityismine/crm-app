@@ -9,6 +9,7 @@ import { getTasks, updateTask } from '@/lib/firebase/tasks'
 import { getDeals } from '@/lib/firebase/deals'
 import { getHealthScore, getNeedsAttention } from '@/lib/healthScore'
 import { usePipelineConfig } from '@/lib/pipeline'
+import { nextBirthday, startOfToday } from '@/lib/birthdays'
 import Avatar from '@/components/ui/Avatar'
 import LogActivityModal from '@/components/activities/LogActivityModal'
 import {
@@ -18,24 +19,11 @@ import {
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const getUpcomingBirthdays = (contacts, daysAhead = 30) => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = startOfToday()
   return contacts.map((c) => {
-    let nextBday = null
-    if (c.nextBirthday) {
-      nextBday = new Date(c.nextBirthday + 'T12:00:00')
-    } else if (c.birthdate) {
-      const birth = new Date(c.birthdate + 'T12:00:00')
-      if (!isNaN(birth.getTime())) {
-        nextBday = new Date(birth)
-        nextBday.setFullYear(today.getFullYear())
-        if (nextBday < today) nextBday.setFullYear(today.getFullYear() + 1)
-      }
-    }
-    if (!nextBday || isNaN(nextBday.getTime())) return null
-    const daysUntil = Math.round((nextBday - today) / (1000 * 60 * 60 * 24))
-    if (daysUntil < 0 || daysUntil > daysAhead) return null
-    return { ...c, nextBday, daysUntil }
+    const next = nextBirthday(c, today)
+    if (!next || next.daysUntil < 0 || next.daysUntil > daysAhead) return null
+    return { ...c, nextBday: next.date, daysUntil: next.daysUntil }
   }).filter(Boolean).sort((a, b) => a.daysUntil - b.daysUntil)
 }
 

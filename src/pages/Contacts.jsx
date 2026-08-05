@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useContacts, refreshContacts } from '@/hooks/useContacts'
 import { useContactStore } from '@/store/contactStore'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -71,6 +71,7 @@ function sortContacts(contacts, sortBy) {
 }
 
 const PINNED_RELS = ['Architect', 'MEP Engineer', 'Contractor']
+const UNASSIGNED = 'Unassigned'
 const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
 
 export default function Contacts() {
@@ -87,7 +88,10 @@ export default function Contacts() {
   const [loggingContact, setLoggingContact] = useState(null)
 
   const filtered = contacts.filter((c) => {
-    const matchesRel = activeRel === 'All' || c.relationship === activeRel
+    const matchesRel =
+      activeRel === 'All' ? true
+      : activeRel === UNASSIGNED ? !c.relationship
+      : c.relationship === activeRel
     const q = search.toLowerCase()
     const matchesSearch = !q || [c.firstName, c.lastName, c.company, c.email, c.location, c.relationship]
       .some((v) => v?.toLowerCase().includes(q))
@@ -121,7 +125,32 @@ export default function Contacts() {
     setLoggingContact(null)
   }
 
-  const relTabs = ['All', ...PINNED_RELS.filter(p => relationshipOptions.includes(p)), ...relationshipOptions.filter(r => !PINNED_RELS.includes(r))]
+  // One pass to tally every relationship, rather than a full scan per tab on
+  // each render (that was 10 passes over the contact list per keystroke).
+  const relCounts = useMemo(() => {
+    const counts = {}
+    let unassigned = 0
+    for (const c of contacts) {
+      if (c.relationship) counts[c.relationship] = (counts[c.relationship] || 0) + 1
+      else unassigned++
+    }
+    return { counts, unassigned }
+  }, [contacts])
+
+  // Only offer filters that lead somewhere — an option nobody is tagged with
+  // is a dead end. The currently-selected tab always stays, so the row doesn't
+  // reshuffle under the cursor if the last match is edited away.
+  const relTabs = useMemo(() => {
+    const ordered = [
+      ...PINNED_RELS.filter((p) => relationshipOptions.includes(p)),
+      ...relationshipOptions.filter((r) => !PINNED_RELS.includes(r)),
+    ]
+    return [
+      'All',
+      ...ordered.filter((r) => relCounts.counts[r] > 0 || r === activeRel),
+      ...(relCounts.unassigned > 0 || activeRel === UNASSIGNED ? [UNASSIGNED] : []),
+    ]
+  }, [relationshipOptions, relCounts, activeRel])
 
   return (
     <div>
@@ -168,12 +197,16 @@ export default function Contacts() {
         />
       </div>
 
-      {/* Relationship filter tabs */}
-      <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+      {/* Relationship filter tabs — wrap rather than scroll sideways, so no
+          option is hidden off the edge (worst on phones, where the row is
+          narrowest and a scrollbar is hard to notice). */}
+      <div className="flex flex-wrap gap-1 mb-3">
         {relTabs.map((rel) => {
           const count = rel === 'All'
             ? contacts.length
-            : contacts.filter((c) => c.relationship === rel).length
+            : rel === UNASSIGNED
+              ? relCounts.unassigned
+              : relCounts.counts[rel] || 0
           const active = activeRel === rel
           return (
             <button
