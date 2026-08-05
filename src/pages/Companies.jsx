@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Building2, Trash2, Edit2, Globe, Phone, MapPin, Users, FileText, Search, LayoutGrid, List, Briefcase } from 'lucide-react'
 import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/lib/firebase/companies'
@@ -6,9 +6,28 @@ import { getDeals } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { usePipelineConfig } from '@/lib/pipeline'
+import FilterControls from '@/components/filters/FilterControls'
+import { matchesFilters, optionsFromField, valuesFromField, hasActiveFilters } from '@/lib/filters'
 import CompanyCard, { CompanyListRow } from '@/components/companies/CompanyCard'
 import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
+
+const PINNED_INDUSTRIES = ['Architect', 'MEP Engineer', 'Contractor']
+const UNASSIGNED = 'Unassigned'
+
+const INFO_PREDICATES = {
+  website:  (c) => Boolean(c.website),
+  phone:    (c) => Boolean(c.phone),
+  location: (c) => Boolean(c.location),
+  missing:  (c) => !c.website && !c.phone,
+}
+
+const INFO_LABELS = {
+  website:  'Has website',
+  phone:    'Has phone number',
+  location: 'Has location',
+  missing:  'Missing contact information',
+}
 
 const SORT_OPTIONS = [
   { value: 'name',     label: 'Name A–Z' },
@@ -253,7 +272,7 @@ export default function Companies() {
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [industryFilter, setIndustryFilter] = useState('All')
+  const [filters, setFilters] = useState({ industry: [], info: [], location: '' })
   const [sortBy, setSortBy] = useState('name')
   const [viewMode, setViewMode] = useState('grid')
   const [modal, setModal] = useState(null) // { mode: 'preview'|'edit'|'add', company? }
@@ -286,23 +305,46 @@ export default function Companies() {
     return counts
   }, [deals, contacts, config])
 
-  // Unique industries for filter tabs — pinned types always first
-  const PINNED_INDUSTRIES = ['Architect', 'MEP Engineer', 'Contractor']
-  const industries = useMemo(() => {
-    const set = new Set(companies.map((c) => c.industry).filter(Boolean))
-    const all = [...set]
-    return [
-      ...PINNED_INDUSTRIES.filter(p => all.includes(p)),
-      ...all.filter(i => !PINNED_INDUSTRIES.includes(i)).sort(),
-    ]
-  }, [companies])
+  const facets = useMemo(() => [
+    {
+      key: 'industry',
+      label: 'Industry',
+      type: 'multi',
+      options: optionsFromField(companies, 'industry', {
+        pinned: PINNED_INDUSTRIES,
+        unassignedValue: UNASSIGNED,
+      }),
+      match: (c, sel) =>
+        sel.some((v) => (v === UNASSIGNED ? !c.industry : c.industry === v)),
+    },
+    {
+      key: 'info',
+      label: 'Company information',
+      type: 'multi',
+      options: Object.keys(INFO_PREDICATES)
+        .map((key) => ({
+          value: key,
+          label: INFO_LABELS[key],
+          count: companies.filter(INFO_PREDICATES[key]).length,
+        }))
+        .filter((o) => o.count > 0),
+      match: (c, sel) => sel.some((v) => INFO_PREDICATES[v](c)),
+    },
+    {
+      key: 'location',
+      label: 'Location',
+      type: 'select',
+      options: valuesFromField(companies, 'location'),
+      match: (c, v) => c.location === v,
+    },
+  ], [companies])
+
+  const matchesSearch = (c, q) =>
+    !q || c.name?.toLowerCase().includes(q) || c.industry?.toLowerCase().includes(q) || c.location?.toLowerCase().includes(q)
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    let result = companies.filter((c) =>
-      (industryFilter === 'All' || c.industry === industryFilter) &&
-      (!q || c.name?.toLowerCase().includes(q) || c.industry?.toLowerCase().includes(q) || c.location?.toLowerCase().includes(q))
-    )
+    let result = companies.filter((c) => matchesSearch(c, q) && matchesFilters(c, facets, filters))
     if (sortBy === 'contacts') {
       result = [...result].sort((a, b) =>
         (contactCounts[b.name?.toLowerCase()] || 0) - (contactCounts[a.name?.toLowerCase()] || 0)
@@ -315,7 +357,15 @@ export default function Companies() {
       result = [...result].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     }
     return result
-  }, [companies, search, industryFilter, sortBy, contactCounts, dealCounts])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies, search, facets, filters, sortBy, contactCounts, dealCounts])
+
+  // Previews the result count on the sheet's apply button without committing.
+  const countFor = useCallback((draft) => {
+    const q = search.toLowerCase()
+    return companies.filter((c) => matchesSearch(c, q) && matchesFilters(c, facets, draft)).length
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies, search, facets])
 
   const handleSave = async (data) => {
     if (modal.mode === 'add') {
@@ -363,61 +413,46 @@ export default function Companies() {
         />
       </div>
 
-      {/* Industry filter tabs */}
-      {industries.length > 0 && (
-        <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-          {['All', ...industries].map((ind) => {
-            const count = ind === 'All'
-              ? companies.length
-              : companies.filter((c) => c.industry === ind).length
-            return (
-              <button
-                key={ind}
-                onClick={() => setIndustryFilter(ind)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                  industryFilter === ind
-                    ? 'bg-gray-700 text-gray-100'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
-                }`}
-              >
-                {ind} <span className="ml-1 text-gray-500">{count}</span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Sort + count + view toggle */}
-      <div className="flex items-center gap-3 mb-4">
-        <select
-          className="input w-auto text-xs py-1.5 pr-7"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <span className="text-xs text-gray-600">
-          {filtered.length} compan{filtered.length !== 1 ? 'ies' : 'y'}
-        </span>
-        <div className="ml-auto flex items-center gap-1">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
-            title="Grid view"
+      <FilterControls
+        facets={facets}
+        value={filters}
+        onChange={setFilters}
+        quickFacetKey="industry"
+        totalCount={companies.length}
+        resultCount={filtered.length}
+        countFor={countFor}
+        noun="companies"
+        title="Filter companies"
+        sortControl={
+          <select
+            className="input w-auto text-xs py-1.5 pr-7"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
           >
-            <LayoutGrid size={15} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
-            title="List view"
-          >
-            <List size={15} />
-          </button>
-        </div>
-      </div>
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        }
+        viewControl={
+          <>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
+              title="Grid view"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
+              title="List view"
+            >
+              <List size={15} />
+            </button>
+          </>
+        }
+      />
 
       {/* Content */}
       {loading ? (
@@ -428,9 +463,9 @@ export default function Companies() {
         <div className="flex flex-col items-center py-16 text-center">
           <Building2 size={32} className="text-gray-700 mb-3" />
           <p className="text-sm text-gray-500">
-            {search || industryFilter !== 'All' ? 'No companies match your filter' : 'No companies yet'}
+            {search || hasActiveFilters(filters) ? 'No companies match your filter' : 'No companies yet'}
           </p>
-          {!search && industryFilter === 'All' && (
+          {!search && !hasActiveFilters(filters) && (
             <button
               onClick={() => setModal({ mode: 'add' })}
               className="mt-3 text-xs text-blue-400 hover:text-blue-300"

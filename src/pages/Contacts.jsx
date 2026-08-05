@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useContacts, refreshContacts } from '@/hooks/useContacts'
 import { useContactStore } from '@/store/contactStore'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -10,6 +10,8 @@ import LogActivityModal from '@/components/activities/LogActivityModal'
 import { createContact, updateContact } from '@/lib/firebase/contacts'
 import { logActivity } from '@/lib/firebase/activities'
 import { getHealthScore } from '@/lib/healthScore'
+import FilterControls from '@/components/filters/FilterControls'
+import { matchesFilters, optionsFromField, valuesFromField, hasActiveFilters } from '@/lib/filters'
 import { Search, Plus, ScanLine, Users, FileUp, LayoutGrid, List } from 'lucide-react'
 
 const SORT_OPTIONS = [
@@ -72,13 +74,31 @@ function sortContacts(contacts, sortBy) {
 
 const PINNED_RELS = ['Architect', 'MEP Engineer', 'Contractor']
 const UNASSIGNED = 'Unassigned'
+
+const hasEmail = (c) => Boolean(c.email || c.emails?.some(Boolean))
+const hasPhone = (c) => Boolean(c.mobilePhone || c.officePhone)
+const hasAddress = (c) => Boolean(c.address || c.location)
+
+const INFO_PREDICATES = {
+  email:   hasEmail,
+  phone:   hasPhone,
+  address: hasAddress,
+  missing: (c) => !hasEmail(c) && !hasPhone(c),
+}
+
+const INFO_LABELS = {
+  email:   'Has email',
+  phone:   'Has phone number',
+  address: 'Has address',
+  missing: 'Missing contact information',
+}
 const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
 
 export default function Contacts() {
   const { contacts } = useContacts()
   const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
   const [search, setSearch] = useState('')
-  const [activeRel, setActiveRel] = useState('All')
+  const [filters, setFilters] = useState({ relationship: [], info: [], location: '', company: '' })
   const [sortBy, setSortBy] = useState('name')
   const [viewMode, setViewMode] = useState('grid')
   const [showForm, setShowForm] = useState(false)
@@ -87,18 +107,6 @@ export default function Contacts() {
   const [scannedContact, setScannedContact] = useState(null)
   const [loggingContact, setLoggingContact] = useState(null)
 
-  const filtered = contacts.filter((c) => {
-    const matchesRel =
-      activeRel === 'All' ? true
-      : activeRel === UNASSIGNED ? !c.relationship
-      : c.relationship === activeRel
-    const q = search.toLowerCase()
-    const matchesSearch = !q || [c.firstName, c.lastName, c.company, c.email, c.location, c.relationship]
-      .some((v) => v?.toLowerCase().includes(q))
-    return matchesRel && matchesSearch
-  })
-
-  const sorted = sortContacts(filtered, sortBy)
 
   const { addContact } = useContactStore()
 
@@ -125,32 +133,70 @@ export default function Contacts() {
     setLoggingContact(null)
   }
 
-  // One pass to tally every relationship, rather than a full scan per tab on
-  // each render (that was 10 passes over the contact list per keystroke).
-  const relCounts = useMemo(() => {
-    const counts = {}
-    let unassigned = 0
-    for (const c of contacts) {
-      if (c.relationship) counts[c.relationship] = (counts[c.relationship] || 0) + 1
-      else unassigned++
-    }
-    return { counts, unassigned }
-  }, [contacts])
+  // Options are tallied in one pass each and exclude values nobody matches —
+  // a filter that returns nothing is a dead end. Relationships are multi-select
+  // so related trades (Architect + MEP Engineer) can be viewed together.
+  const facets = useMemo(() => [
+    {
+      key: 'relationship',
+      label: 'Relationship',
+      type: 'multi',
+      options: optionsFromField(contacts, 'relationship', {
+        pinned: PINNED_RELS.filter((p) => relationshipOptions.includes(p)),
+        unassignedValue: UNASSIGNED,
+      }),
+      match: (c, sel) =>
+        sel.some((v) => (v === UNASSIGNED ? !c.relationship : c.relationship === v)),
+    },
+    {
+      key: 'info',
+      label: 'Contact information',
+      type: 'multi',
+      options: Object.keys(INFO_PREDICATES)
+        .map((key) => ({
+          value: key,
+          label: INFO_LABELS[key],
+          count: contacts.filter(INFO_PREDICATES[key]).length,
+        }))
+        .filter((o) => o.count > 0),
+      match: (c, sel) => sel.some((v) => INFO_PREDICATES[v](c)),
+    },
+    {
+      key: 'location',
+      label: 'Location',
+      type: 'select',
+      options: valuesFromField(contacts, 'location'),
+      match: (c, v) => c.location === v,
+    },
+    {
+      key: 'company',
+      label: 'Company',
+      type: 'select',
+      options: valuesFromField(contacts, 'company'),
+      match: (c, v) => c.company === v,
+    },
+  ], [contacts, relationshipOptions])
 
-  // Only offer filters that lead somewhere — an option nobody is tagged with
-  // is a dead end. The currently-selected tab always stays, so the row doesn't
-  // reshuffle under the cursor if the last match is edited away.
-  const relTabs = useMemo(() => {
-    const ordered = [
-      ...PINNED_RELS.filter((p) => relationshipOptions.includes(p)),
-      ...relationshipOptions.filter((r) => !PINNED_RELS.includes(r)),
-    ]
-    return [
-      'All',
-      ...ordered.filter((r) => relCounts.counts[r] > 0 || r === activeRel),
-      ...(relCounts.unassigned > 0 || activeRel === UNASSIGNED ? [UNASSIGNED] : []),
-    ]
-  }, [relationshipOptions, relCounts, activeRel])
+  const matchesSearch = (c) => {
+    const q = search.toLowerCase()
+    return !q || [c.firstName, c.lastName, c.company, c.email, c.location, c.relationship]
+      .some((v) => v?.toLowerCase().includes(q))
+  }
+
+  const filtered = useMemo(
+    () => contacts.filter((c) => matchesSearch(c) && matchesFilters(c, facets, filters)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contacts, search, facets, filters]
+  )
+
+  const sorted = sortContacts(filtered, sortBy)
+
+  // Previews the result count on the sheet's apply button without committing.
+  const countFor = useCallback(
+    (draft) => contacts.filter((c) => matchesSearch(c) && matchesFilters(c, facets, draft)).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contacts, search, facets]
+  )
 
   return (
     <div>
@@ -197,66 +243,46 @@ export default function Contacts() {
         />
       </div>
 
-      {/* Relationship filter tabs — wrap rather than scroll sideways, so no
-          option is hidden off the edge (worst on phones, where the row is
-          narrowest and a scrollbar is hard to notice). */}
-      <div className="flex flex-wrap gap-1 mb-3">
-        {relTabs.map((rel) => {
-          const count = rel === 'All'
-            ? contacts.length
-            : rel === UNASSIGNED
-              ? relCounts.unassigned
-              : relCounts.counts[rel] || 0
-          const active = activeRel === rel
-          return (
+      <FilterControls
+        facets={facets}
+        value={filters}
+        onChange={setFilters}
+        quickFacetKey="relationship"
+        totalCount={contacts.length}
+        resultCount={sorted.length}
+        countFor={countFor}
+        noun="contacts"
+        title="Filter contacts"
+        sortControl={
+          <select
+            className="input w-auto text-xs py-1.5 pr-7"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        }
+        viewControl={
+          <>
             <button
-              key={rel}
-              onClick={() => setActiveRel(rel)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border ${
-                active
-                  ? 'bg-blue-500/15 text-blue-300 border-blue-500/25'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800 border-transparent'
-              }`}
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
+              title="Grid view"
             >
-              {rel}{count > 0 && (
-                <span className={`ml-1.5 ${active ? 'text-blue-400' : 'text-gray-600'}`}>{count}</span>
-              )}
+              <LayoutGrid size={15} />
             </button>
-          )
-        })}
-      </div>
-
-      {/* Sort + view toggle */}
-      <div className="flex items-center gap-2 mb-1">
-        <select
-          className="input w-auto text-xs py-1.5 pr-7"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <div className="ml-auto flex items-center gap-1">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
-            title="Grid view"
-          >
-            <LayoutGrid size={15} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
-            title="List view"
-          >
-            <List size={15} />
-          </button>
-        </div>
-      </div>
-      <p className="text-xs text-gray-600 mb-3">
-        {sorted.length} contact{sorted.length !== 1 ? 's' : ''}
-      </p>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-gray-700 text-gray-200' : 'text-gray-600 hover:text-gray-400'}`}
+              title="List view"
+            >
+              <List size={15} />
+            </button>
+          </>
+        }
+      />
 
       {/* Contacts */}
       {sorted.length > 0 ? (
@@ -277,9 +303,9 @@ export default function Contacts() {
         <div className="flex flex-col items-center justify-center h-64 text-center">
           <Users size={36} className="text-gray-700 mb-3" />
           <p className="text-gray-400 font-medium">
-            {search || activeRel !== 'All' ? 'No contacts match your filter' : 'No contacts yet'}
+            {search || hasActiveFilters(filters) ? 'No contacts match your filter' : 'No contacts yet'}
           </p>
-          {!search && activeRel === 'All' && (
+          {!search && !hasActiveFilters(filters) && (
             <p className="text-gray-600 text-sm mt-1">
               Add one manually or{' '}
               <button onClick={() => setShowImport(true)} className="text-blue-400 hover:text-blue-300 transition-colors">
