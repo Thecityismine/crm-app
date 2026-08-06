@@ -11,7 +11,7 @@ import { createContact, updateContact } from '@/lib/firebase/contacts'
 import { logActivity } from '@/lib/firebase/activities'
 import { getHealthScore } from '@/lib/healthScore'
 import FilterControls from '@/components/filters/FilterControls'
-import { matchesFilters, optionsFromField, valuesFromField, hasActiveFilters } from '@/lib/filters'
+import { matchesFilters, optionsFromSettings, valuesFromField, hasActiveFilters } from '@/lib/filters'
 import { Search, Plus, ScanLine, Users, FileUp, LayoutGrid, List } from 'lucide-react'
 
 const SORT_OPTIONS = [
@@ -72,7 +72,6 @@ function sortContacts(contacts, sortBy) {
   })
 }
 
-const PINNED_RELS = ['Architect', 'MEP Engineer', 'Contractor']
 const UNASSIGNED = 'Unassigned'
 
 const hasEmail = (c) => Boolean(c.email || c.emails?.some(Boolean))
@@ -134,15 +133,16 @@ export default function Contacts() {
   }
 
   // Options are tallied in one pass each and exclude values nobody matches —
-  // a filter that returns nothing is a dead end. Relationships are multi-select
-  // so related trades (Architect + MEP Engineer) can be viewed together.
+  // a filter that returns nothing is a dead end. Relationships come from the
+  // Relationship Types list in Settings, in that order, so editing the list
+  // there is what changes the filter here. They're multi-select so related
+  // trades (Architect + MEP Engineer) can be viewed together.
   const facets = useMemo(() => [
     {
       key: 'relationship',
       label: 'Relationship',
       type: 'multi',
-      options: optionsFromField(contacts, 'relationship', {
-        pinned: PINNED_RELS.filter((p) => relationshipOptions.includes(p)),
+      options: optionsFromSettings(contacts, 'relationship', relationshipOptions, {
         unassignedValue: UNASSIGNED,
       }),
       match: (c, sel) =>

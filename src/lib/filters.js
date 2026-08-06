@@ -118,6 +118,41 @@ export function optionsFromField(items, field, { pinned = [], unassignedValue } 
   return options
 }
 
+/**
+ * Options for a field whose vocabulary is configured in Settings.
+ *
+ * The configured list drives order and membership, so the filter offers the
+ * categories the user actually defined instead of whatever the data happens to
+ * contain. Values found only on items — renamed categories, CSV imports — are
+ * kept after them so no item becomes unreachable. Categories nothing matches
+ * are still dropped; a filter that returns nothing is a dead end.
+ */
+export function optionsFromSettings(items, field, configured = [], { unassignedValue } = {}) {
+  const counts = new Map()
+  let missing = 0
+  for (const item of items) {
+    const v = item[field]
+    if (v) counts.set(v, (counts.get(v) || 0) + 1)
+    else missing++
+  }
+
+  const known = new Set(configured)
+  const configuredOpts = configured
+    .filter((v) => counts.has(v))
+    .map((value) => ({ value, label: value, count: counts.get(value) }))
+
+  const unlisted = [...counts.entries()]
+    .filter(([v]) => !known.has(v))
+    .map(([value, count]) => ({ value, label: value, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+
+  const options = [...configuredOpts, ...unlisted]
+  if (unassignedValue && missing > 0) {
+    options.push({ value: unassignedValue, label: 'Unassigned', count: missing })
+  }
+  return options
+}
+
 /** Distinct non-empty values of a field, most common first — for 'select' facets. */
 export function valuesFromField(items, field) {
   const counts = new Map()
