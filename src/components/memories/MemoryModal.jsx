@@ -252,18 +252,22 @@ export default function MemoryModal({ memory, onClose }) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
+        {/* Stacked on phones. A native date input carries an intrinsic minimum
+            width, and a 1fr grid column defaults to min-width:auto, so side by
+            side at this width the date field pushed straight through the kind
+            buttons. min-w-0 lets the columns actually shrink once they fit. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="min-w-0">
             <label className="label">Date</label>
             <input
-              className="input"
+              className="input min-w-0"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="label">Kind</label>
             <div className="flex gap-2">
               {MEMORY_KINDS.map((k) => (
@@ -289,7 +293,7 @@ export default function MemoryModal({ memory, onClose }) {
           <label className="label">Place</label>
           <div className="flex gap-2">
             <input
-              className="input"
+              className="input min-w-0"
               placeholder="Acadmir PreK, Miami FL"
               value={placeLabel}
               onChange={(e) => { setPlaceLabel(e.target.value); setCoords(null); setLocateNote('') }}
@@ -379,7 +383,7 @@ export default function MemoryModal({ memory, onClose }) {
           </p>
         )}
 
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           {isEdit && (
             <>
               <button
@@ -405,7 +409,7 @@ export default function MemoryModal({ memory, onClose }) {
               </button>
             </>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
             {progress && <span className="text-xs text-gray-500">{progress}</span>}
             <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50 flex items-center gap-2">
