@@ -16,3 +16,6 @@ crm-app/
 
 # Local Claude Code config and worktrees (worktrees hold a full app copy)
 .claude/
+
+# Telegram bot token — kept locally, never committed
+crm_telegram_bot_key.txt

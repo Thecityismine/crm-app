@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import Avatar from '@/components/ui/Avatar'
 import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import { getHealthScore } from '@/lib/healthScore'
+import { localDateOnly, startOfToday } from '@/lib/birthdays'
 import { Phone, Calendar, MapPin, Mail, Activity } from 'lucide-react'
 
 const BORDER_CLASS = {
@@ -21,10 +22,17 @@ const DOT_CLASS = {
 }
 
 const formatFollowUp = (dateStr) => {
-  if (!dateStr) return null
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return null
+  const d = localDateOnly(dateStr)
+  if (!d) return null
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// Overdue means the due date is strictly before today, compared date-to-date.
+// Comparing the stored UTC-midnight timestamp against `new Date()` flipped this
+// on at 8pm the evening before the follow-up was actually due.
+const isFollowUpOverdue = (dateStr) => {
+  const d = localDateOnly(dateStr)
+  return !!d && d < startOfToday()
 }
 
 const fmtLastContacted = (iso) => {
@@ -43,7 +51,7 @@ const fmtLastContacted = (iso) => {
 export default function ContactCard({ contact, onLog }) {
   const navigate = useNavigate()
   const health = getHealthScore(contact)
-  const isOverdue = contact.nextFollowUp && new Date(contact.nextFollowUp) < new Date()
+  const isOverdue = isFollowUpOverdue(contact.nextFollowUp)
   const followUpStr = formatFollowUp(contact.nextFollowUp)
   const lastContacted = fmtLastContacted(contact.lastCommunication)
   const phone = contact.mobilePhone || contact.officePhone
@@ -147,7 +155,7 @@ export default function ContactCard({ contact, onLog }) {
 export function ContactListRow({ contact, onLog }) {
   const navigate = useNavigate()
   const health = getHealthScore(contact)
-  const isOverdue = contact.nextFollowUp && new Date(contact.nextFollowUp) < new Date()
+  const isOverdue = isFollowUpOverdue(contact.nextFollowUp)
   const followUpStr = formatFollowUp(contact.nextFollowUp)
   const lastContacted = fmtLastContacted(contact.lastCommunication)
   const phone = contact.mobilePhone || contact.officePhone

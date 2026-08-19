@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useContactStore } from '@/store/contactStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import { getTasks } from '@/lib/firebase/tasks'
-import { nextBirthday, birthdayLabel } from '@/lib/birthdays'
+import { nextBirthday, birthdayLabel, localDateOnly } from '@/lib/birthdays'
 
 export function useNotifications() {
   const { contacts } = useContactStore()
@@ -17,9 +17,8 @@ export function useNotifications() {
 
     // ── Overdue follow-ups ───────────────────────────────────────────────
     contacts.forEach((c) => {
-      if (!c.nextFollowUp) return
-      const due = new Date(c.nextFollowUp)
-      due.setHours(0, 0, 0, 0)
+      const due = localDateOnly(c.nextFollowUp)
+      if (!due) return
       const diff = Math.round((due - today) / 86400000)
       if (diff < 0) {
         notifs.push({
@@ -36,8 +35,7 @@ export function useNotifications() {
 
     // ── Birthdays in next 7 days ─────────────────────────────────────────
     contacts.forEach((c) => {
-      if (!c.birthdate) return
-      const next = nextBirthday({ birthdate: c.birthdate }, today)
+      const next = nextBirthday(c, today)
       if (!next || next.daysUntil > 7) return
       notifs.push({
         id: `birthday_${c.id}`,
