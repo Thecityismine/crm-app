@@ -112,18 +112,25 @@ export function findDueTasks(tasks, today) {
 }
 
 /**
- * Contacts past their cadence, inferred from `interval` + `lastCommunication`.
- * This is a standing backlog rather than a dated event, so the handler only
- * asks for it on Mondays — daily would make it wallpaper.
+ * Contacts past their cadence, from `interval` + `lastCommunication`.
+ *
+ * An explicit `interval` is required. This used to fall back to `|| 30`, which
+ * put every contact on a monthly cadence nobody chose and meant "haven't spoken
+ * in a month" read as overdue — for most of the book, permanently. Only
+ * contacts the user actually put on a recurrence belong here.
+ *
+ * It's a standing backlog rather than a dated event, so the handler only asks
+ * for it on Mondays — daily would make it wallpaper.
  */
 export function findNeedsAttention(contacts, today) {
   const todayNum = toDayNumber(today)
   return contacts
     .map((c) => {
+      const limit = INTERVAL_DAYS[c.interval]
+      if (!limit) return null
       const last = toDayNumber(c.lastCommunication)
       if (last === null) return null
       const daysSince = todayNum - last
-      const limit = INTERVAL_DAYS[c.interval] || 30
       return daysSince > limit ? { contact: c, daysSince, limit } : null
     })
     .filter(Boolean)

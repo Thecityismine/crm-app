@@ -22,7 +22,7 @@ const SORT_OPTIONS = [
   { value: 'date_added',     label: 'Date Added' },
 ]
 
-const HEALTH_ORDER = { cold: 0, overdue: 1, due_soon: 2, active: 3, unknown: 4 }
+const HEALTH_ORDER = { cold: 0, overdue: 1, due_soon: 2, active: 3, unscheduled: 4, unknown: 5 }
 
 const NAME_SUFFIXES = new Set([
   'jr','sr','ii','iii','iv','v','ra','aia','pe','pmp','cpa','phd','md','esq','leed',
@@ -60,8 +60,8 @@ function sortContacts(contacts, sortBy) {
         return bd - ad
       }
       case 'health': {
-        const as_ = HEALTH_ORDER[getHealthScore(a).score] ?? 4
-        const bs_ = HEALTH_ORDER[getHealthScore(b).score] ?? 4
+        const as_ = HEALTH_ORDER[getHealthScore(a).score] ?? 5
+        const bs_ = HEALTH_ORDER[getHealthScore(b).score] ?? 5
         return as_ - bs_
       }
       case 'date_added':

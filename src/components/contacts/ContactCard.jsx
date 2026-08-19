@@ -21,6 +21,11 @@ const DOT_CLASS = {
   gray:   'bg-gray-700',
 }
 
+// Scores worth a badge in a dense list. 'unscheduled' and 'unknown' are the
+// resting state for most of the book, so a badge for them is pure noise here —
+// the detail page still spells it out.
+const HAS_SIGNAL = new Set(['active', 'due_soon', 'overdue', 'cold'])
+
 const formatFollowUp = (dateStr) => {
   const d = localDateOnly(dateStr)
   if (!d) return null
@@ -82,7 +87,7 @@ export default function ContactCard({ contact, onLog }) {
           )}
         </div>
         <div className="flex-shrink-0">
-          {health.score !== 'unknown' && <HealthScoreBadge contact={contact} />}
+          {HAS_SIGNAL.has(health.score) && <HealthScoreBadge contact={contact} />}
         </div>
       </div>
 
@@ -199,7 +204,7 @@ export function ContactListRow({ contact, onLog }) {
 
       {/* Health badge */}
       <div className="hidden sm:block w-20 flex-shrink-0 text-right">
-        {health.score !== 'unknown' ? <HealthScoreBadge contact={contact} /> : <span className="text-xs text-gray-700">—</span>}
+        {HAS_SIGNAL.has(health.score) ? <HealthScoreBadge contact={contact} /> : <span className="text-xs text-gray-700">—</span>}
       </div>
 
       {/* Follow-up / Last contacted */}

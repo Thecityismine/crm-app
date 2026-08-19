@@ -45,21 +45,34 @@ export function getHealthScore(contact) {
     return                        { score: 'cold',     label: 'Cold',      color: 'red',    daysOverdue }
   }
 
-  // --- Tertiary: just lastCommunication, no interval ---
+  // --- No schedule: silence, not alarm ---
+  //
+  // There used to be a third branch here that assumed a 30-day cadence for any
+  // contact with a lastCommunication, so simply not having spoken to someone
+  // for a month marked them Overdue and pushed them into Needs Attention. That
+  // is a cadence the user never asked for: most contacts are not on one, and
+  // burying the handful that are under hundreds that aren't makes the whole
+  // signal worthless.
+  //
+  // Overdue now requires an actual schedule — a `nextFollowUp` date or an
+  // `interval` recurrence, both handled above. Without one there is nothing to
+  // be late for, so report the absence and let the user opt in.
   if (contact.lastCommunication) {
     const last = new Date(contact.lastCommunication)
     const daysSince = Math.round((now - last) / 86400000)
-
-    if (daysSince < 30)  return { score: 'active',   label: 'Active',   color: 'green',  daysOverdue: -daysSince }
-    if (daysSince < 60)  return { score: 'due_soon', label: 'Check In', color: 'yellow', daysOverdue: daysSince - 30 }
-    if (daysSince < 120) return { score: 'overdue',  label: 'Overdue',  color: 'orange', daysOverdue: daysSince - 30 }
-    return                      { score: 'cold',     label: 'Cold',     color: 'red',    daysOverdue: daysSince - 30 }
+    return { score: 'unscheduled', label: 'No follow-up set', color: 'gray', daysOverdue: 0, daysSince }
   }
 
   return { score: 'unknown', label: 'No Activity', color: 'gray', daysOverdue: 0 }
 }
 
-/** Returns contacts that need attention, sorted most urgent first */
+/**
+ * Contacts that need attention, most urgent first.
+ *
+ * Only scheduled contacts can qualify: 'unscheduled' and 'unknown' are absent
+ * from this list by construction, so someone you simply haven't called lately
+ * never appears here unless you asked to be reminded about them.
+ */
 export function getNeedsAttention(contacts) {
   return contacts
     .map((c) => ({ ...c, _health: getHealthScore(c) }))

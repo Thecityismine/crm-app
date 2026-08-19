@@ -23,6 +23,7 @@ const HEALTH_CONFIG = [
   { key: 'due_soon', label: 'Due Soon',    color: 'bg-yellow-500', badge: 'bg-yellow-500/15 text-yellow-400' },
   { key: 'overdue',  label: 'Overdue',     color: 'bg-orange-500', badge: 'bg-orange-500/15 text-orange-400' },
   { key: 'cold',     label: 'Cold',        color: 'bg-red-500',    badge: 'bg-red-500/15 text-red-400' },
+  { key: 'unscheduled', label: 'No Follow-up', color: 'bg-gray-500', badge: 'bg-gray-700 text-gray-400' },
   { key: 'unknown',  label: 'No Activity', color: 'bg-gray-600',   badge: 'bg-gray-700 text-gray-500' },
 ]
 
@@ -138,7 +139,7 @@ export default function Reports() {
 
   // ── Relationship Health (current snapshot) ─────────────────────────────────
   const healthBuckets = useMemo(() => {
-    const counts = { active: 0, due_soon: 0, overdue: 0, cold: 0, unknown: 0 }
+    const counts = { active: 0, due_soon: 0, overdue: 0, cold: 0, unscheduled: 0, unknown: 0 }
     contacts.forEach((c) => {
       const { score } = getHealthScore(c)
       counts[score] = (counts[score] || 0) + 1

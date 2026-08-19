@@ -154,6 +154,9 @@ export default async function handler(req, res) {
       withBirthdate: contacts.filter((c) => c.birthdate || c.nextBirthday).length,
       withAnniversary: contacts.filter((c) => c.weddingAnniversary).length,
       withFollowUp: contacts.filter((c) => c.nextFollowUp).length,
+      // Contacts on an actual recurrence — the only ones that can go overdue.
+      withInterval: contacts.filter((c) => c.interval).length,
+      scheduled: contacts.filter((c) => c.interval || c.nextFollowUp).length,
     }
 
     const message = buildDigest(today, parts)
