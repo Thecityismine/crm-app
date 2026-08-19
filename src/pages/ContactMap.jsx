@@ -1,93 +1,16 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useMemo } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import { useNavigate } from 'react-router-dom'
 import { useContactStore } from '@/store/contactStore'
-import { auth } from '@/config/firebase'
+import { useGeocodedPins } from '@/hooks/useGeocodedPins'
+import { normLoc } from '@/lib/geocode'
 import { Loader2, RefreshCw } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import 'leaflet/dist/leaflet.css'
 
-const LS_CACHE_KEY = 'crm_geo_cache'
-
-// ── Normalise location strings so "Dallas TX" == "Dallas, TX" == "dallas tx" ──
-function normLoc(loc) {
-  return loc.toLowerCase().trim().replace(/\s+/g, ' ').replace(/,\s*/g, ', ')
-}
-
-// ── localStorage helpers ────────────────────────────────────────────────────
-function loadLSCache() {
-  try { return JSON.parse(localStorage.getItem(LS_CACHE_KEY) || '{}') } catch { return {} }
-}
-function saveLSCache(c) {
-  try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify(c)) } catch { /* private mode / quota — cache is best-effort */ }
-}
-
-// ── Firestore geocache helpers (persist across browsers / devices) ──────────
-async function loadFSCache() {
-  try {
-    const token = await auth.currentUser?.getIdToken()
-    if (!token) return {}
-    const pid = import.meta.env.VITE_FIREBASE_PROJECT_ID
-    const res = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents/geocache/locations`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    if (!res.ok) return {}
-    const doc = await res.json()
-    const str = doc.fields?.data?.stringValue
-    return str ? JSON.parse(str) : {}
-  } catch { return {} }
-}
-
-async function saveFSCache(cache) {
-  try {
-    const token = await auth.currentUser?.getIdToken()
-    if (!token) return
-    const pid = import.meta.env.VITE_FIREBASE_PROJECT_ID
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents/geocache/locations`,
-      {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify(cache) } } }),
-      }
-    )
-  } catch { /* silent — localStorage is the fallback */ }
-}
-
-// ── Nominatim geocoder ──────────────────────────────────────────────────────
-async function geocodeLoc(location) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1&addressdetails=0`
-  const res = await fetch(url, { headers: { Accept: 'application/json' } })
-  if (!res.ok) return null
-  const data = await res.json()
-  if (!data.length) return null
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-
-// ── Build map pins from locMap + cache ──────────────────────────────────────
-function buildPins(locMap, cache) {
-  const coordMap = {}
-  for (const [loc, contacts] of Object.entries(locMap)) {
-    const coords = cache[loc]
-    if (!coords) continue
-    const key = `${coords.lat.toFixed(3)},${coords.lng.toFixed(3)}`
-    if (!coordMap[key]) coordMap[key] = { lat: coords.lat, lng: coords.lng, contacts: [] }
-    coordMap[key].contacts.push(...contacts)
-  }
-  return Object.values(coordMap)
-}
-
-// ── Component ───────────────────────────────────────────────────────────────
 export default function ContactMap() {
   const { contacts } = useContactStore()
   const navigate = useNavigate()
-
-  const [pins, setPins] = useState([])
-  const [geocoding, setGeocoding] = useState(false)
-  const [progress, setProgress] = useState({ done: 0, total: 0 })
 
   // Group contacts by normalised location string
   const locMap = useMemo(() => {
@@ -107,98 +30,14 @@ export default function ContactMap() {
     [contacts]
   )
 
-  // Stable key — only changes when the SET of unique location strings changes,
-  // not on every Firestore snapshot that updates contact data in-place.
-  const locKeys = useMemo(() => Object.keys(locMap).sort().join('|'), [locMap])
+  // Shared across devices: contacts are the largest set of locations here, so
+  // the crawl is the one most worth not repeating on a second browser.
+  const { pins, geocoding, progress, clearCache } = useGeocodedPins(locMap, {
+    lsKey: 'crm_geo_cache',
+    remoteDoc: 'locations',
+  })
 
-  // Keep locMap accessible inside the effect without it being a dep
-  const locMapRef = useRef(locMap)
-  useEffect(() => { locMapRef.current = locMap }, [locMap])
-
-  const abortRef = useRef(false)
-
-  useEffect(() => {
-    if (!locKeys) return
-    abortRef.current = false
-
-    async function run() {
-      const current = locMapRef.current
-
-      // 1. Show locally-cached pins immediately (sync)
-      const lsCache = loadLSCache()
-      setPins(buildPins(current, lsCache))
-
-      // 2. Fetch Firestore cache (async — may have entries from other devices)
-      const fsCache = await loadFSCache()
-      const cache = { ...fsCache, ...lsCache } // localStorage wins for conflicts
-      saveLSCache(cache)
-      setPins(buildPins(current, cache))
-
-      const toGeocode = Object.keys(current).filter((loc) => !(loc in cache))
-      if (!toGeocode.length) return
-
-      setGeocoding(true)
-      setProgress({ done: 0, total: toGeocode.length })
-
-      for (let i = 0; i < toGeocode.length; i++) {
-        if (abortRef.current) break
-        const loc = toGeocode[i]
-        try {
-          const coords = await geocodeLoc(loc)
-          cache[loc] = coords ?? null
-        } catch {
-          cache[loc] = null
-        }
-        saveLSCache(cache)
-        setProgress({ done: i + 1, total: toGeocode.length })
-        setPins(buildPins(current, cache))
-
-        // Flush to Firestore every 10 entries so progress is preserved cross-device
-        if ((i + 1) % 10 === 0 || i === toGeocode.length - 1) {
-          saveFSCache(cache) // fire-and-forget
-        }
-
-        if (i < toGeocode.length - 1) await sleep(1050) // Nominatim: ≤ 1 req/sec
-      }
-
-      setGeocoding(false)
-    }
-
-    run()
-    return () => { abortRef.current = true }
-  }, [locKeys]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function clearCache() {
-    localStorage.removeItem(LS_CACHE_KEY)
-    saveFSCache({}) // clear Firestore too
-    // Force re-run by temporarily clearing pins; the effect will re-fire next render
-    setPins([])
-    abortRef.current = true
-    setTimeout(() => {
-      abortRef.current = false
-      const current = locMapRef.current
-      const toGeocode = Object.keys(current)
-      if (!toGeocode.length) return
-      setGeocoding(true)
-      setProgress({ done: 0, total: toGeocode.length })
-      const cache = {}
-      ;(async () => {
-        for (let i = 0; i < toGeocode.length; i++) {
-          if (abortRef.current) break
-          const loc = toGeocode[i]
-          try { cache[loc] = (await geocodeLoc(loc)) ?? null } catch { cache[loc] = null }
-          saveLSCache(cache)
-          setProgress({ done: i + 1, total: toGeocode.length })
-          setPins(buildPins(current, cache))
-          if ((i + 1) % 10 === 0 || i === toGeocode.length - 1) saveFSCache(cache)
-          if (i < toGeocode.length - 1) await sleep(1050)
-        }
-        setGeocoding(false)
-      })()
-    }, 100)
-  }
-
-  const locatedCount = pins.reduce((s, p) => s + p.contacts.length, 0)
+  const locatedCount = pins.reduce((s, p) => s + p.items.length, 0)
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 130px)' }}>
@@ -246,7 +85,7 @@ export default function ContactMap() {
           />
 
           {pins.map((pin, i) => {
-            const count = pin.contacts.length
+            const count = pin.items.length
             const radius = count >= 10 ? 14 : count >= 5 ? 11 : count >= 2 ? 8 : 6
             return (
               <CircleMarker
@@ -257,7 +96,7 @@ export default function ContactMap() {
               >
                 <Popup className="crm-map-popup" maxWidth={240} minWidth={180}>
                   <div style={{ fontFamily: 'inherit' }}>
-                    {pin.contacts.map((c) => (
+                    {pin.items.map((c) => (
                       <div
                         key={c.id}
                         onClick={() => navigate(`/contacts/${c.id}`)}

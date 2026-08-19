@@ -1,28 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useMemo } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Loader2, RefreshCw } from 'lucide-react'
+import { useGeocodedPins } from '@/hooks/useGeocodedPins'
 import 'leaflet/dist/leaflet.css'
-
-const GEO_CACHE_KEY = 'crm_property_geo_cache'
-
-function loadCache() {
-  try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}') } catch { return {} }
-}
-function saveCache(cache) {
-  try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)) } catch { /* private mode / quota — cache is best-effort */ }
-}
-
-async function geocodeLocation(query) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=0`
-  const res = await fetch(url, { headers: { Accept: 'application/json' } })
-  if (!res.ok) return null
-  const data = await res.json()
-  if (!data.length) return null
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 // Color per property type — full strings for Tailwind JIT
 const TYPE_COLORS = {
@@ -43,27 +24,12 @@ const TYPE_LABELS = {
 const fmtCompact = (n) =>
   n ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(n) : null
 
-function buildPins(locMap, cache) {
-  const coordMap = {}
-  for (const [loc, props] of Object.entries(locMap)) {
-    const coords = cache[loc]
-    if (!coords) continue
-    const key = `${coords.lat.toFixed(3)},${coords.lng.toFixed(3)}`
-    if (!coordMap[key]) coordMap[key] = { lat: coords.lat, lng: coords.lng, properties: [] }
-    coordMap[key].properties.push(...props)
-  }
-  return Object.values(coordMap)
-}
-
 export default function PropertyMap({ properties }) {
   const navigate = useNavigate()
-  const [pins, setPins] = useState([])
-  const [geocoding, setGeocoding] = useState(false)
-  const [progress, setProgress] = useState({ done: 0, total: 0 })
-  const abortRef = useRef(false)
-  const ranRef = useRef(false)
 
-  // Group by best available address string
+  // Group by best available address string. Street addresses are specific
+  // enough that normalising them would merge distinct buildings, so unlike the
+  // contact map these keys stay raw.
   const locMap = useMemo(() => {
     const map = {}
     for (const p of properties) {
@@ -80,51 +46,11 @@ export default function PropertyMap({ properties }) {
     [properties]
   )
 
-  useEffect(() => {
-    abortRef.current = false
-    ranRef.current = false
-    run()
-    return () => { abortRef.current = true }
-  }, [locMap])
+  const { pins, geocoding, progress, clearCache } = useGeocodedPins(locMap, {
+    lsKey: 'crm_property_geo_cache',
+  })
 
-  async function run() {
-    if (ranRef.current) return
-    ranRef.current = true
-
-    const cache = loadCache()
-    const uniqueLocs = Object.keys(locMap)
-    const toGeocode = uniqueLocs.filter((loc) => !(loc in cache))
-
-    setPins(buildPins(locMap, cache))
-    if (!toGeocode.length) return
-
-    setGeocoding(true)
-    setProgress({ done: 0, total: toGeocode.length })
-
-    for (let i = 0; i < toGeocode.length; i++) {
-      if (abortRef.current) break
-      const loc = toGeocode[i]
-      try {
-        cache[loc] = (await geocodeLocation(loc)) || null
-        saveCache(cache)
-      } catch {
-        cache[loc] = null
-      }
-      setProgress({ done: i + 1, total: toGeocode.length })
-      setPins(buildPins(locMap, cache))
-      if (i < toGeocode.length - 1) await sleep(1100) // Nominatim: 1 req/s
-    }
-
-    setGeocoding(false)
-  }
-
-  function clearCache() {
-    localStorage.removeItem(GEO_CACHE_KEY)
-    ranRef.current = false
-    run()
-  }
-
-  const locatedCount = pins.reduce((s, p) => s + p.properties.length, 0)
+  const locatedCount = pins.reduce((s, p) => s + p.items.length, 0)
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 240px)', minHeight: '420px' }}>
@@ -171,13 +97,13 @@ export default function PropertyMap({ properties }) {
           {pins.map((pin, i) => {
             // Use dominant type for pin color
             const typeCounts = {}
-            pin.properties.forEach((p) => {
+            pin.items.forEach((p) => {
               const t = p.type || 'other'
               typeCounts[t] = (typeCounts[t] || 0) + 1
             })
             const dominantType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0]
             const colors = TYPE_COLORS[dominantType] || TYPE_COLORS.other
-            const count = pin.properties.length
+            const count = pin.items.length
             const radius = count >= 5 ? 12 : count >= 2 ? 9 : 7
 
             return (
@@ -189,7 +115,7 @@ export default function PropertyMap({ properties }) {
               >
                 <Popup className="crm-map-popup" maxWidth={260} minWidth={200}>
                   <div style={{ fontFamily: 'inherit' }}>
-                    {pin.properties.map((p) => {
+                    {pin.items.map((p) => {
                       const c = TYPE_COLORS[p.type] || TYPE_COLORS.other
                       return (
                         <div
