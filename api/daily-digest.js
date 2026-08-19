@@ -140,14 +140,25 @@ export default async function handler(req, res) {
     const counts = Object.fromEntries(
       Object.entries(parts).map(([k, v]) => [k, v.length]))
 
+    // How much was read, so a silent morning is distinguishable from a broken
+    // query. All-zero counts against zero contacts is a fetch problem; all-zero
+    // against 400 contacts is just a quiet day.
+    const scanned = {
+      contacts: contacts.length,
+      tasks: tasks.length,
+      withBirthdate: contacts.filter((c) => c.birthdate || c.nextBirthday).length,
+      withAnniversary: contacts.filter((c) => c.weddingAnniversary).length,
+      withFollowUp: contacts.filter((c) => c.nextFollowUp).length,
+    }
+
     const message = buildDigest(today, parts)
     if (!message) {
-      return res.status(200).json({ sent: false, today, reason: 'Nothing to report', counts })
+      return res.status(200).json({ sent: false, today, reason: 'Nothing to report', counts, scanned })
     }
 
     // Dry run: ?preview=1 returns the message without sending it.
     if (req.query?.preview) {
-      return res.status(200).json({ sent: false, today, preview: message, counts })
+      return res.status(200).json({ sent: false, today, preview: message, counts, scanned })
     }
 
     const messageId = await sendTelegram(
@@ -156,7 +167,7 @@ export default async function handler(req, res) {
       message,
     )
 
-    return res.status(200).json({ sent: true, today, messageId, counts })
+    return res.status(200).json({ sent: true, today, messageId, counts, scanned })
   } catch (err) {
     console.error('daily-digest error:', err)
     return res.status(500).json({ error: err.message })
