@@ -1,12 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, Kanban, CheckSquare, Globe } from 'lucide-react'
+import { LayoutDashboard, Users, Kanban, CheckSquare, Heart } from 'lucide-react'
 
 const links = [
   { to: '/',         icon: LayoutDashboard, label: 'Home'     },
   { to: '/contacts', icon: Users,           label: 'Contacts' },
   { to: '/pipeline', icon: Kanban,          label: 'Pipeline' },
   { to: '/tasks',    icon: CheckSquare,     label: 'Tasks'    },
-  { to: '/map',      icon: Globe,           label: 'Map'      },
+  { to: '/memories', icon: Heart,           label: 'Memories' },
 ]
 
 export default function BottomNav() {

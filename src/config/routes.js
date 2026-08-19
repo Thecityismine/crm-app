@@ -11,6 +11,8 @@ export const ROUTES = {
   PROPERTIES: '/properties',
   PROPERTY_DETAIL: '/properties/:id',
   MAP: '/map',
+  MEMORIES: '/memories',
+  MEMORY_DETAIL: '/memories/:id',
   TASKS: '/tasks',
   EMAILS: '/emails',
   REPORTS: '/reports',

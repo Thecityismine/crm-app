@@ -25,6 +25,8 @@ const Pipeline       = lazy(() => import('@/pages/Pipeline'))
 const Properties     = lazy(() => import('@/pages/Properties'))
 const PropertyDetail = lazy(() => import('@/pages/PropertyDetail'))
 const ContactMap     = lazy(() => import('@/pages/ContactMap'))
+const Memories       = lazy(() => import('@/pages/Memories'))
+const MemoryDetail   = lazy(() => import('@/pages/MemoryDetail'))
 const Tasks          = lazy(() => import('@/pages/Tasks'))
 const Emails         = lazy(() => import('@/pages/Emails'))
 const Reports        = lazy(() => import('@/pages/Reports'))
@@ -63,6 +65,8 @@ export default function App() {
           <Route path="properties" element={<Properties />} />
           <Route path="properties/:id" element={<PropertyDetail />} />
           <Route path="map" element={<ContactMap />} />
+          <Route path="memories" element={<Memories />} />
+          <Route path="memories/:id" element={<MemoryDetail />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="emails" element={<Emails />} />
           <Route path="reports" element={<Reports />} />
