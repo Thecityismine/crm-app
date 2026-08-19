@@ -10,6 +10,7 @@ import Avatar from '@/components/ui/Avatar'
 import HealthScoreBadge from '@/components/ui/HealthScoreBadge'
 import Modal from '@/components/ui/Modal'
 import { usePipelineConfig, stageBorderBadgeClass } from '@/lib/pipeline'
+import { isPastDate } from '@/lib/dates'
 
 const fmt = (n) =>
   n > 0
@@ -162,9 +163,9 @@ export default function DealDetail() {
     )
   }
 
-  const isPastClose = deal.closingDate
-    && new Date(deal.closingDate + 'T12:00:00') < new Date()
-    && config.isActive(deal.stage)
+  // Strictly before today. The old comparison used the current instant, so the
+  // banner appeared halfway through the closing day itself.
+  const isPastClose = isPastDate(deal.closingDate) && config.isActive(deal.stage)
 
   return (
     <div className="max-w-3xl">

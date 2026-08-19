@@ -1,33 +1,15 @@
-// Single source of truth for birthday date math.
+import { startOfToday } from './dates.js'
+
+// Birthday and anniversary date math. Generic helpers live in ./dates.
 //
 // Two separate copies of this drifted into the codebase (the notifications
 // hook and the Dashboard widget) and both carried the same off-by-one:
 // a birthday falling today reported as "Tomorrow".
 
-/** Local midnight for today. */
-export function startOfToday() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-/**
- * Local midnight for a stored date, read from its calendar date only.
- *
- * Date-only fields get persisted two different ways: `birthdate` as a bare
- * 'YYYY-MM-DD', `nextFollowUp` as `new Date('YYYY-MM-DD').toISOString()` —
- * which is UTC midnight. Feeding that ISO string straight to `new Date()` in a
- * negative offset lands on the previous evening, so a follow-up set for the
- * 20th renders as the 19th and reads as overdue a day early. Slicing to the
- * date portion and anchoring at local noon keeps the calendar date intact.
- */
-export function localDateOnly(value) {
-  if (!value) return null
-  const d = new Date(String(value).slice(0, 10) + 'T12:00:00')
-  if (isNaN(d.getTime())) return null
-  d.setHours(0, 0, 0, 0)
-  return d
-}
+// The generic calendar-date helpers live in dates.js now — three copies of the
+// same off-by-one bug is what it took to earn them a shared home. Re-exported
+// here so existing importers keep working.
+export { startOfToday, localDateOnly } from './dates.js'
 
 /**
  * Resolve a contact's next birthday.

@@ -1,6 +1,7 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Calendar, User, GripVertical, Clock } from 'lucide-react'
+import { daysFromToday } from '@/lib/dates'
 
 const formatValue = (v) => {
   if (!v) return null
@@ -23,7 +24,7 @@ const formatDate = (d) => {
 // Returns { color: 'red'|'yellow'|null, label: string|null }
 function getCloseMeta(closingDate) {
   if (!closingDate) return { color: null, label: null }
-  const days = Math.round((new Date(closingDate + 'T12:00:00') - new Date()) / 86400000)
+  const days = daysFromToday(closingDate)
   if (days < 0) return { color: 'red', label: 'Overdue' }
   if (days === 0) return { color: 'red', label: 'Due today' }
   if (days <= 7) return { color: 'yellow', label: `${days}d left` }

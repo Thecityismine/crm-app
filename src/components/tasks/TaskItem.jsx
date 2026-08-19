@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { localDateOnly, daysFromToday } from '@/lib/dates'
 import { Trash2, User, Briefcase, RefreshCw } from 'lucide-react'
 
 // Full class strings for Tailwind JIT
@@ -23,10 +24,13 @@ const PRIORITY_LABELS = {
 }
 
 function formatDueDate(d) {
-  if (!d) return null
-  const date = new Date(d + 'T12:00:00')
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const diff = Math.round((date - today) / 86400000)
+  const date = localDateOnly(d)
+  if (!date) return null
+  // Both operands are local midnight. This used to measure a noon-anchored due
+  // date against midnight today, so Math.round(0.5) made every label one day
+  // late: a task due today read "Tomorrow" and one due yesterday read "Due
+  // today" — while the Tasks page grouped the same task correctly under Today.
+  const diff = daysFromToday(d)
 
   if (diff < 0)  return { label: `${Math.abs(diff)}d overdue`,                                             overdue: true }
   if (diff === 0) return { label: 'Due today',                                                             today: true }

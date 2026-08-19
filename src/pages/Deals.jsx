@@ -7,6 +7,7 @@ import {
 import { getDeals, createDeal, updateDeal, deleteDeal } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
 import { usePipelineConfig, stageBadgeClass } from '@/lib/pipeline'
+import { daysFromToday } from '@/lib/dates'
 import Modal from '@/components/ui/Modal'
 import { Trash2 } from 'lucide-react'
 
@@ -30,8 +31,9 @@ const getCloseDateMeta = (dateStr, stage, config) => {
   if (!dateStr || !config.isActive(stage)) {
     return { color: 'text-gray-500', label: fmtDate(dateStr), badge: null }
   }
-  const d = new Date(dateStr + 'T12:00:00')
-  const daysUntil = Math.round((d - new Date()) / 86400000)
+  // Measured midnight-to-midnight; comparing against the current instant made
+  // a deal closing today flip to "overdue" once the clock passed noon.
+  const daysUntil = daysFromToday(dateStr)
   if (daysUntil < 0) {
     return { color: 'text-red-400', label: fmtDate(dateStr), badge: `${Math.abs(daysUntil)}d overdue` }
   }
