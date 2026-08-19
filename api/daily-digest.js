@@ -120,8 +120,13 @@ export default async function handler(req, res) {
     const token = await getGoogleAccessToken(serviceAccount)
 
     const now = new Date()
-    const today = todayInZone(now)
-    const isMonday = weekdayInZone(now) === 'Mon'
+    // ?date=YYYY-MM-DD runs the digest as though it were that day, for checking
+    // what an upcoming morning will look like. Auth-gated like everything else.
+    const override = /^\d{4}-\d{2}-\d{2}$/.test(req.query?.date || '') ? req.query.date : null
+    const today = override || todayInZone(now)
+    const isMonday = override
+      ? new Date(today + 'T12:00:00Z').getUTCDay() === 1
+      : weekdayInZone(now) === 'Mon'
 
     const [contacts, tasks] = await Promise.all([
       fsQuery(projectId, token, 'contacts'),
