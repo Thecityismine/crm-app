@@ -1,13 +1,14 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import {
-  ImagePlus, X, Loader2, AlertCircle, MapPin, Search, Trash2, Archive, ArchiveRestore,
+  ImagePlus, X, Loader2, AlertCircle, MapPin, Search, Trash2, Archive, ArchiveRestore, Sparkles,
 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
 import { useContactStore } from '@/store/contactStore'
 import { useMemoryStore } from '@/store/memoryStore'
 import { uploadImage } from '@/lib/storage'
-import { geocodeLocation } from '@/lib/geocode'
+import { geocodeLocation, reverseGeocode } from '@/lib/geocode'
+import { readPhotoMeta } from '@/lib/exif'
 import { MEMORY_KINDS } from '@/config/constants'
 import {
   createMemory, updateMemory, deleteMemory,
@@ -55,6 +56,12 @@ export default function MemoryModal({ memory, onClose }) {
   const [propertyId] = useState(memory?.propertyId || null)
   const [peopleQuery, setPeopleQuery] = useState('')
 
+  // A photo knows when and where it was taken. Autofill never overwrites
+  // anything the user set, so it needs to know what they touched.
+  const [dateTouched, setDateTouched] = useState(false)
+  const [autofillNote, setAutofillNote] = useState('')
+  const autofilledRef = useRef(false)
+
   const [saving, setSaving] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
@@ -73,6 +80,52 @@ export default function MemoryModal({ memory, onClose }) {
     setNewFiles((f) => [...f, ...files])
     setPreviews((p) => [...p, ...files.map((f) => URL.createObjectURL(f))])
     e.target.value = ''
+    autofillFrom(files[0])
+  }
+
+  /**
+   * Fill the date and place from the photo's own metadata.
+   *
+   * Only ever fills what is still untouched, and only once per session — a
+   * second photo shouldn't quietly move a moment the user has already dated.
+   * Editing an existing moment never re-dates it; that date was deliberate.
+   */
+  async function autofillFrom(file) {
+    if (autofilledRef.current) return
+
+    const meta = await readPhotoMeta(file)
+    if (!meta.date && meta.lat == null) return
+
+    const filled = []
+
+    if (meta.date && !isEdit && !dateTouched) {
+      setDate(meta.date)
+      filled.push('date')
+    }
+
+    if (meta.lat != null && !placeLabel.trim()) {
+      const coordLabel = `${meta.lat.toFixed(5)}, ${meta.lng.toFixed(5)}`
+      setCoords({ lat: meta.lat, lng: meta.lng })
+      setPlaceLabel(coordLabel)
+      filled.push('place')
+
+      // Naming the spot is a round trip, so the coordinates go in first and the
+      // name replaces them only if the field is still exactly as we left it —
+      // otherwise a slow lookup would land on top of the user's typing.
+      reverseGeocode(meta.lat, meta.lng)
+        .then((name) => {
+          if (name) setPlaceLabel((cur) => (cur === coordLabel ? name : cur))
+        })
+        .catch(() => { /* coordinates stand on their own */ })
+    }
+
+    if (!filled.length) return
+    autofilledRef.current = true
+    setAutofillNote(
+      filled.length === 2 ? 'Date and place taken from the photo'
+        : filled[0] === 'date' ? 'Date taken from the photo'
+        : 'Place taken from the photo'
+    )
   }
 
   const removeExisting = (url) => setExistingUrls((u) => u.filter((x) => x !== url))
@@ -230,6 +283,12 @@ export default function MemoryModal({ memory, onClose }) {
             onChange={handlePick}
             className="hidden"
           />
+          {autofillNote && (
+            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+              <Sparkles size={11} className="text-brand-500 flex-shrink-0" />
+              {autofillNote} — change anything that looks wrong.
+            </p>
+          )}
         </div>
 
         <div>
@@ -263,7 +322,7 @@ export default function MemoryModal({ memory, onClose }) {
               className="input min-w-0"
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => { setDate(e.target.value); setDateTouched(true) }}
               required
             />
           </div>

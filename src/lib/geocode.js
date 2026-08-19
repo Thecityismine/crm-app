@@ -10,6 +10,7 @@
 import { auth } from '@/config/firebase'
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
+const NOMINATIM_REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse'
 
 // Nominatim's usage policy is one request per second. Stay just under.
 export const RATE_LIMIT_MS = 1100
@@ -37,6 +38,22 @@ export function normLoc(loc) {
     .replace(/[.,]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+/**
+ * Name a coordinate. Returns a short label, or null.
+ *
+ * Nominatim's display_name is a full postal chain down to the country, which is
+ * far too long for a caption, so this keeps the leading, most specific parts.
+ */
+export async function reverseGeocode(lat, lng) {
+  const url = `${NOMINATIM_REVERSE_URL}?lat=${lat}&lon=${lng}&format=json&zoom=17&addressdetails=0`
+  const res = await fetch(url, { headers: { Accept: 'application/json' } })
+  if (!res.ok) return null
+  const data = await res.json()
+  const full = data?.display_name
+  if (!full) return null
+  return full.split(',').slice(0, 3).map((s) => s.trim()).filter(Boolean).join(', ') || null
 }
 
 /** Resolve one location string. Returns { lat, lng }, or null when unfound. */
