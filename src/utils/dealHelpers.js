@@ -15,3 +15,19 @@ export const groupDealsByStage = (deals, stages) => {
 
 export const getPipelineValue = (deals) =>
   deals.reduce((sum, deal) => sum + (deal.value || 0), 0)
+
+/**
+ * Stamp stageEnteredAt when a save actually moves the deal to a different stage.
+ *
+ * "Days in stage" reads stageEnteredAt and falls back to createdAt, so a deal
+ * whose stage changed without this stamp reports its age since creation
+ * instead. Only drag-and-drop and the table's advance button used to set it,
+ * so moving a deal through the edit modal or the detail page left the counter
+ * measuring the wrong thing entirely.
+ *
+ * Pass prevStage as null for a new deal.
+ */
+export const withStageTimestamp = (data, prevStage) =>
+  data.stage && data.stage !== prevStage
+    ? { ...data, stageEnteredAt: new Date().toISOString() }
+    : data

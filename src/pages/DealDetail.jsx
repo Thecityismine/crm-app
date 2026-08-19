@@ -138,9 +138,10 @@ export default function DealDetail() {
   const handleMoveStage = async (stage) => {
     if (stage === deal.stage) return
     setMovingTo(stage)
+    const stageEnteredAt = new Date().toISOString()
     try {
-      await updateDeal(id, { stage })
-      setDeal((d) => ({ ...d, stage }))
+      await updateDeal(id, { stage, stageEnteredAt })
+      setDeal((d) => ({ ...d, stage, stageEnteredAt }))
     } catch (err) {
       console.warn('Stage move failed:', err)
     } finally {

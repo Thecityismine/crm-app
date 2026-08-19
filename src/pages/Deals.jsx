@@ -8,6 +8,7 @@ import { getDeals, createDeal, updateDeal, deleteDeal } from '@/lib/firebase/dea
 import { useContactStore } from '@/store/contactStore'
 import { usePipelineConfig, stageBadgeClass } from '@/lib/pipeline'
 import { daysFromToday } from '@/lib/dates'
+import { withStageTimestamp } from '@/utils/dealHelpers'
 import Modal from '@/components/ui/Modal'
 import { Trash2 } from 'lucide-react'
 
@@ -34,6 +35,9 @@ const getCloseDateMeta = (dateStr, stage, config) => {
   // Measured midnight-to-midnight; comparing against the current instant made
   // a deal closing today flip to "overdue" once the clock passed noon.
   const daysUntil = daysFromToday(dateStr)
+  if (daysUntil === null) {
+    return { color: 'text-gray-500', label: fmtDate(dateStr), badge: null }
+  }
   if (daysUntil < 0) {
     return { color: 'text-red-400', label: fmtDate(dateStr), badge: `${Math.abs(daysUntil)}d overdue` }
   }
@@ -268,11 +272,13 @@ export default function Deals() {
     [filtered]
   )
 
-  const handleSave = async (data) => {
+  const handleSave = async (raw) => {
     if (modal.mode === 'add') {
+      const data = withStageTimestamp(raw, null)
       const { id } = await createDeal(data)
       setDeals((prev) => [{ id, ...data }, ...prev])
     } else {
+      const data = withStageTimestamp(raw, modal.deal.stage)
       await updateDeal(modal.deal.id, data)
       setDeals((prev) => prev.map((d) => d.id === modal.deal.id ? { ...d, ...data } : d))
     }

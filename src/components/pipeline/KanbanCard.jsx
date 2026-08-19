@@ -2,6 +2,7 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Calendar, User, GripVertical, Clock } from 'lucide-react'
 import { daysFromToday } from '@/lib/dates'
+import { usePipelineConfig } from '@/lib/pipeline'
 
 const formatValue = (v) => {
   if (!v) return null
@@ -22,13 +23,21 @@ const formatDate = (d) => {
 }
 
 // Returns { color: 'red'|'yellow'|null, label: string|null }
-function getCloseMeta(closingDate) {
-  if (!closingDate) return { color: null, label: null }
+//
+// Only active deals can be late. A deal sitting in Won or Lost has already
+// closed, so its expected close date is history, not a deadline — the board
+// used to ignore the stage entirely and brand won deals "Overdue" forever.
+// The Deals table and the deal detail page both got this right; this didn't.
+const NEUTRAL = { color: null, label: null }
+
+function getCloseMeta(closingDate, stage, config) {
+  if (!closingDate || !config.isActive(stage)) return NEUTRAL
   const days = daysFromToday(closingDate)
+  if (days === null) return NEUTRAL
   if (days < 0) return { color: 'red', label: 'Overdue' }
   if (days === 0) return { color: 'red', label: 'Due today' }
   if (days <= 7) return { color: 'yellow', label: `${days}d left` }
-  return { color: null, label: null }
+  return NEUTRAL
 }
 
 function getDaysInStage(deal) {
@@ -52,6 +61,7 @@ const DATE_COLOR = {
 }
 
 export default function KanbanCard({ deal, onClick }) {
+  const config = usePipelineConfig()
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: deal.id,
   })
@@ -61,7 +71,7 @@ export default function KanbanCard({ deal, onClick }) {
     opacity: isDragging ? 0.4 : 1,
   }
 
-  const closeMeta = getCloseMeta(deal.closingDate)
+  const closeMeta = getCloseMeta(deal.closingDate, deal.stage, config)
   const daysInStage = getDaysInStage(deal)
   const urgencyBorder = closeMeta.color ? URGENCY_BORDER[closeMeta.color] : ''
 

@@ -5,6 +5,7 @@ import Modal from '@/components/ui/Modal'
 import { createDeal, updateDeal, deleteDeal } from '@/lib/firebase/deals'
 import { useContactStore } from '@/store/contactStore'
 import { usePipelineConfig } from '@/lib/pipeline'
+import { withStageTimestamp } from '@/utils/dealHelpers'
 
 function DealModal({ deal, initialStage, contacts, config, onClose, onSave, onDelete }) {
   const [form, setForm] = useState({
@@ -177,11 +178,11 @@ export default function Pipeline() {
   const handleAddDeal = (stage) => setModal({ mode: 'add', stage: stage || config.stages[0] })
   const handleDealClick = (deal) => setModal({ mode: 'edit', deal })
 
-  const handleSave = async (data) => {
+  const handleSave = async (raw) => {
     if (modal.mode === 'add') {
-      await createDeal(data)
+      await createDeal(withStageTimestamp(raw, null))
     } else {
-      await updateDeal(modal.deal.id, data)
+      await updateDeal(modal.deal.id, withStageTimestamp(raw, modal.deal.stage))
     }
     setModal(null)
     refresh()
