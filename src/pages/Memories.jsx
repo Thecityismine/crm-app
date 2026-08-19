@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Heart, Archive, Clock, Plus } from 'lucide-react'
+import { Search, Heart, Archive, Clock, Plus, CalendarDays, List } from 'lucide-react'
 import { format } from 'date-fns'
 import { useMemories } from '@/hooks/useMemories'
 import { useContactStore } from '@/store/contactStore'
 import { localDateOnly } from '@/lib/dates'
 import MemoryCard from '@/components/memories/MemoryCard'
 import MemoryModal from '@/components/memories/MemoryModal'
+import MemoryCalendar from '@/components/memories/MemoryCalendar'
 
 const KIND_FILTERS = [
   { value: 'all',      label: 'All'      },
@@ -53,6 +54,9 @@ export default function Memories() {
   const [kind, setKind] = useState('all')
   const [showArchived, setShowArchived] = useState(false)
   const [capturing, setCapturing] = useState(false)
+  const [view, setView] = useState('timeline')
+  // 'YYYY-MM-DD' of the day picked in the calendar, or null for the whole month
+  const [selectedDay, setSelectedDay] = useState(null)
 
   // One pass over contacts, not one per card.
   const contactsById = useMemo(() => {
@@ -79,6 +83,15 @@ export default function Memories() {
       // prepended, so sort again rather than trust arrival order.
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
   }, [memories, query, kind, showArchived, peopleFor])
+
+  // In calendar view the list underneath narrows to the day you picked; with
+  // no day picked there is nothing to list, the grid is the view.
+  const listed = useMemo(
+    () => (view === 'calendar'
+      ? (selectedDay ? visible.filter((m) => String(m.date).slice(0, 10) === selectedDay) : [])
+      : visible),
+    [view, selectedDay, visible]
+  )
 
   const activeCount = memories.filter((m) => !m.archived).length
 
@@ -126,19 +139,43 @@ export default function Memories() {
             {k.label}
           </Chip>
         ))}
+        <div className="ml-auto flex items-center gap-2">
+          <Chip
+            active={view === 'timeline'}
+            onClick={() => { setView('timeline'); setSelectedDay(null) }}
+            icon={List}
+          >
+            List
+          </Chip>
+          <Chip active={view === 'calendar'} onClick={() => setView('calendar')} icon={CalendarDays}>
+            Calendar
+          </Chip>
+        </div>
       </div>
 
+      {view === 'calendar' && (
+        <div className="mb-6">
+          <MemoryCalendar
+            memories={visible}
+            selectedDay={selectedDay}
+            onSelectDay={setSelectedDay}
+          />
+        </div>
+      )}
+
       {/* Timeline */}
-      {visible.length === 0 ? (
+      {listed.length === 0 ? (
         <div className="text-center py-16">
           <Heart size={28} className="mx-auto text-gray-700 mb-3" />
           <p className="text-gray-400 font-medium">
-            {!initialized ? 'Loading…'
+            {view === 'calendar' && !selectedDay ? 'Pick a day above'
+              : view === 'calendar' ? 'Nothing on that day'
+              : !initialized ? 'Loading…'
               : query || kind !== 'all' ? 'Nothing matches those filters'
               : showArchived ? 'Nothing archived'
               : 'No moments yet'}
           </p>
-          {!query && kind === 'all' && !showArchived && initialized && (
+          {view === 'timeline' && !query && kind === 'all' && !showArchived && initialized && (
             <>
               <p className="text-gray-600 text-sm mt-1">
                 Moments you capture will appear here, newest first.
@@ -155,11 +192,11 @@ export default function Memories() {
           <span className="absolute left-[27px] top-2 bottom-2 w-px bg-gray-800 hidden sm:block" />
 
           <div className="space-y-5">
-            {visible.map((memory, i) => {
+            {listed.map((memory, i) => {
               const day = localDateOnly(memory.date)
               // Only label a date when it changes, so several moments on one
               // day read as one day.
-              const isNewDay = i === 0 || visible[i - 1].date !== memory.date
+              const isNewDay = i === 0 || listed[i - 1].date !== memory.date
 
               return (
                 <div key={memory.id} className="sm:flex sm:gap-5">
