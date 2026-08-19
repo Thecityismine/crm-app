@@ -22,6 +22,11 @@ export const TASK_PRIORITIES = ['low', 'medium', 'high', 'urgent']
 // Task statuses
 export const TASK_STATUSES = ['open', 'in_progress', 'completed', 'cancelled']
 
+// Memory kinds. Personal and client moments share one collection and one
+// timeline; this is what the filter chips switch on, and what decides whether
+// a memory offers deal/property links at all.
+export const MEMORY_KINDS = ['personal', 'client']
+
 // User roles
 export const USER_ROLES = ['admin', 'manager', 'user', 'read_only']
 
@@ -44,6 +49,7 @@ export const COLLECTIONS = {
   EMAIL_TEMPLATES: 'email_templates',
   TASK_TEMPLATES: 'task_templates',
   PROJECT_LINKS: 'project_links',
+  MEMORIES: 'memories',
 }
 
 // Pipeline stage templates live in @/store/settingsStore and are consumed
