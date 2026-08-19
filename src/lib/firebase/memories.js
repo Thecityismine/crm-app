@@ -44,9 +44,10 @@ function normalize(data) {
   if ('photoUrls' in out) out.photoUrls = (out.photoUrls || []).filter(Boolean)
   if ('contactIds' in out) out.contactIds = (out.contactIds || []).filter(Boolean)
   if ('tags' in out) out.tags = (out.tags || []).filter(Boolean)
-  // A memory with no resolved coordinates is stored as no place at all, so the
-  // map layer never has to defend against a half-filled one.
-  if ('place' in out && out.place && (out.place.lat == null || out.place.lng == null)) {
+  // A place keeps its label even when nothing could be geocoded — "Grandma's
+  // house" is worth recording and no geocoder will ever find it. The map layer
+  // filters on coordinates; only a place with neither is dropped.
+  if ('place' in out && out.place && !out.place.label && out.place.lat == null) {
     out.place = null
   }
   return out

@@ -1,11 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, MapPin, Archive, Tag } from 'lucide-react'
+import { ArrowLeft, MapPin, Archive, Tag, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { useMemoryStore } from '@/store/memoryStore'
 import { useContactStore } from '@/store/contactStore'
 import { localDateOnly } from '@/lib/dates'
 import Avatar from '@/components/ui/Avatar'
+import MemoryModal from '@/components/memories/MemoryModal'
 
 const KIND_STYLES = {
   personal: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
@@ -17,6 +18,7 @@ export default function MemoryDetail() {
   const navigate = useNavigate()
   const { memories } = useMemoryStore()
   const { contacts } = useContactStore()
+  const [editing, setEditing] = useState(false)
 
   const memory = useMemo(() => memories.find((m) => m.id === id), [memories, id])
 
@@ -54,6 +56,13 @@ export default function MemoryDetail() {
           {memory.title || 'Untitled moment'}
         </h1>
         <div className="flex items-center gap-2 flex-shrink-0 pt-1">
+          <button
+            onClick={() => setEditing(true)}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
+            title="Edit this moment"
+          >
+            <Pencil size={15} />
+          </button>
           {memory.archived && (
             <span className="px-2 py-0.5 rounded-md border border-gray-700 bg-gray-800 text-gray-400 text-[10px] font-medium uppercase tracking-wide flex items-center gap-1">
               <Archive size={10} />Archived
@@ -137,6 +146,8 @@ export default function MemoryDetail() {
           </div>
         )}
       </div>
+
+      {editing && <MemoryModal memory={memory} onClose={() => setEditing(false)} />}
     </div>
   )
 }

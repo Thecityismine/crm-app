@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Heart, Archive, Clock } from 'lucide-react'
+import { Search, Heart, Archive, Clock, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import { useMemories } from '@/hooks/useMemories'
 import { useContactStore } from '@/store/contactStore'
 import { localDateOnly } from '@/lib/dates'
 import MemoryCard from '@/components/memories/MemoryCard'
+import MemoryModal from '@/components/memories/MemoryModal'
 
 const KIND_FILTERS = [
   { value: 'all',      label: 'All'      },
@@ -51,6 +52,7 @@ export default function Memories() {
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState('all')
   const [showArchived, setShowArchived] = useState(false)
+  const [capturing, setCapturing] = useState(false)
 
   // One pass over contacts, not one per card.
   const contactsById = useMemo(() => {
@@ -83,11 +85,20 @@ export default function Memories() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-3xl font-bold text-gray-100 tracking-tight">Memories</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          {activeCount} {activeCount === 1 ? 'moment' : 'moments'} in this private timeline
-        </p>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-100 tracking-tight">Memories</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {activeCount} {activeCount === 1 ? 'moment' : 'moments'} in this private timeline
+          </p>
+        </div>
+        <button
+          onClick={() => setCapturing(true)}
+          className="btn-primary flex items-center gap-1.5 flex-shrink-0"
+        >
+          <Plus size={15} />
+          Capture
+        </button>
       </div>
 
       {/* Search */}
@@ -128,9 +139,14 @@ export default function Memories() {
               : 'No moments yet'}
           </p>
           {!query && kind === 'all' && !showArchived && initialized && (
-            <p className="text-gray-600 text-sm mt-1">
-              Moments you capture will appear here, newest first.
-            </p>
+            <>
+              <p className="text-gray-600 text-sm mt-1">
+                Moments you capture will appear here, newest first.
+              </p>
+              <button onClick={() => setCapturing(true)} className="btn-primary mt-4">
+                Capture your first moment
+              </button>
+            </>
           )}
         </div>
       ) : (
@@ -183,6 +199,8 @@ export default function Memories() {
           </div>
         </div>
       )}
+
+      {capturing && <MemoryModal onClose={() => setCapturing(false)} />}
     </div>
   )
 }
