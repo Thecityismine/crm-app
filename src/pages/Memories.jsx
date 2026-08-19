@@ -93,10 +93,23 @@ export default function Memories() {
     [view, selectedDay, visible]
   )
 
+  // One entry per day, so the rail marks days rather than moments and a day's
+  // moments can lay out side by side.
+  const groups = useMemo(() => {
+    const out = []
+    for (const m of listed) {
+      const key = String(m.date || '')
+      const last = out[out.length - 1]
+      if (last && last.date === key) last.items.push(m)
+      else out.push({ date: key, items: [m] })
+    }
+    return out
+  }, [listed])
+
   const activeCount = memories.filter((m) => !m.archived).length
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div>
       {/* Header */}
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
@@ -115,7 +128,7 @@ export default function Memories() {
       </div>
 
       {/* Search */}
-      <div className="relative mb-4">
+      <div className="relative mb-4 max-w-xl">
         <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
         <input
           className="input pl-10 rounded-full"
@@ -191,17 +204,14 @@ export default function Memories() {
           {/* The rail. Sits behind the date markers and stops at the last one. */}
           <span className="absolute left-[27px] top-2 bottom-2 w-px bg-gray-800 hidden sm:block" />
 
-          <div className="space-y-5">
-            {listed.map((memory, i) => {
-              const day = localDateOnly(memory.date)
-              // Only label a date when it changes, so several moments on one
-              // day read as one day.
-              const isNewDay = i === 0 || listed[i - 1].date !== memory.date
+          <div className="space-y-6">
+            {groups.map((group) => {
+              const day = localDateOnly(group.date)
 
               return (
-                <div key={memory.id} className="sm:flex sm:gap-5">
+                <div key={group.date || 'undated'} className="sm:flex sm:gap-5">
                   <div className="hidden sm:block w-14 flex-shrink-0 pt-1 text-right">
-                    {isNewDay && day && (
+                    {day && (
                       <>
                         <p className="text-[10px] font-semibold text-brand-500 uppercase tracking-widest">
                           {format(day, 'MMM')}
@@ -215,20 +225,23 @@ export default function Memories() {
                   </div>
 
                   <div className="relative flex-1 min-w-0">
-                    {isNewDay && (
-                      <span className="hidden sm:block absolute -left-[19px] top-2.5 w-2.5 h-2.5 rounded-full bg-brand-500 ring-4 ring-black" />
-                    )}
-                    {/* Phones lose the gutter, so the date rides on the card */}
+                    <span className="hidden sm:block absolute -left-[19px] top-2.5 w-2.5 h-2.5 rounded-full bg-brand-500 ring-4 ring-black" />
+                    {/* Phones lose the gutter, so the date rides above the cards */}
                     {day && (
                       <p className="sm:hidden text-[11px] font-semibold text-brand-500 uppercase tracking-widest mb-1.5">
                         {format(day, 'MMM d, yyyy')}
                       </p>
                     )}
-                    <MemoryCard
-                      memory={memory}
-                      people={peopleFor.get(memory.id) || []}
-                      onClick={() => navigate(`/memories/${memory.id}`)}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 items-start">
+                      {group.items.map((memory) => (
+                        <MemoryCard
+                          key={memory.id}
+                          memory={memory}
+                          people={peopleFor.get(memory.id) || []}
+                          onClick={() => navigate(`/memories/${memory.id}`)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               )

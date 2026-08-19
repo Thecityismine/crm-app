@@ -30,7 +30,7 @@ export default function MemoryDetail() {
 
   if (!memory) {
     return (
-      <div className="max-w-3xl mx-auto py-16 text-center">
+      <div className="max-w-4xl py-16 text-center">
         <p className="text-gray-400">That moment isn't here.</p>
         <button onClick={() => navigate('/memories')} className="btn-secondary mt-4">
           Back to Memories
@@ -42,7 +42,7 @@ export default function MemoryDetail() {
   const day = localDateOnly(memory.date)
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-4xl">
       <button
         onClick={() => navigate('/memories')}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors mb-4"

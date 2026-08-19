@@ -111,7 +111,7 @@ export default function MemoryCalendar({ memories, selectedDay, onSelectDay }) {
               type="button"
               disabled={!has}
               onClick={() => onSelectDay(selected ? null : key)}
-              className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 transition-colors relative ${
+              className={`min-h-[58px] sm:min-h-[72px] rounded-lg flex flex-col items-center justify-center gap-1 transition-colors relative ${
                 selected ? 'bg-brand-500 text-white'
                   : has ? 'bg-gray-800 hover:bg-gray-700 cursor-pointer'
                   : 'cursor-default'

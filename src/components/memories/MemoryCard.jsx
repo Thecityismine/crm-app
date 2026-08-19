@@ -40,22 +40,26 @@ export default function MemoryCard({ memory, people = [], onClick }) {
             </span>
           )}
         </div>
-      ) : (
-        <div className="aspect-[16/5] bg-gray-800/50 flex items-center justify-center">
-          <ImageIcon size={20} className="text-gray-700" />
-        </div>
-      )}
+      ) : null}
 
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-semibold text-gray-100 leading-snug">
             {memory.title || 'Untitled moment'}
           </h3>
-          {memory.kind && (
-            <span className={`px-2 py-0.5 rounded-md border text-[10px] font-medium uppercase tracking-wide flex-shrink-0 ${KIND_STYLES[memory.kind] || KIND_STYLES.personal}`}>
-              {memory.kind}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* With no photo there's no overlay to carry this. */}
+            {!photo && memory.archived && (
+              <span className="px-2 py-0.5 rounded-md border border-gray-700 bg-gray-800 text-gray-400 text-[10px] font-medium uppercase tracking-wide flex items-center gap-1">
+                <Archive size={10} />Archived
+              </span>
+            )}
+            {memory.kind && (
+              <span className={`px-2 py-0.5 rounded-md border text-[10px] font-medium uppercase tracking-wide ${KIND_STYLES[memory.kind] || KIND_STYLES.personal}`}>
+                {memory.kind}
+              </span>
+            )}
+          </div>
         </div>
 
         {memory.story && (
