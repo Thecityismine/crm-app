@@ -23,11 +23,20 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
  * Normalise a location string so "Dallas TX", "Dallas, TX" and "dallas  tx"
  * share a single cache entry instead of costing three geocode requests.
  *
+ * Punctuation is dropped rather than tidied. The earlier version only
+ * normalised the spacing around commas, which left "dallas tx" and
+ * "dallas, tx" as separate keys — the exact pair it was written to merge —
+ * so the same city was geocoded twice and drew two pins a few metres apart.
+ *
  * Only use this for coarse locations (a contact's city). Street addresses are
- * already specific enough that normalising buys nothing.
+ * specific enough that normalising them would merge distinct buildings.
  */
 export function normLoc(loc) {
-  return String(loc).toLowerCase().trim().replace(/\s+/g, ' ').replace(/,\s*/g, ', ')
+  return String(loc)
+    .toLowerCase()
+    .replace(/[.,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /** Resolve one location string. Returns { lat, lng }, or null when unfound. */
