@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { sendTelegram } from './_lib/telegram.js'
+import { sendTelegram, escapeHtml } from './_lib/telegram.js'
 import {
   findBirthdays, findAnniversaries, findFollowUps, findDueTasks,
   findNeedsAttention, buildDigest,
@@ -96,13 +96,62 @@ export function weekdayInZone(now = new Date(), timeZone = TIME_ZONE) {
   return new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(now)
 }
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Vercel Cron sends the CRON_SECRET as a bearer token; the same header works
+ * for a manual trigger, which is how you test without waiting for the cron.
+ *
+ * Fails closed. This used to be `if (secret && ...)`, which meant that if
+ * CRON_SECRET were ever removed or renamed the endpoint quietly became public —
+ * and this endpoint sends Telegram messages and reads the entire contact book.
+ * A missing secret is a reason to refuse, not to wave everyone through.
+ */
+export function authorized(req, secret = process.env.CRON_SECRET) {
+  if (!secret) return false
+  const provided = Buffer.from(String(req?.headers?.authorization || ''))
+  const expected = Buffer.from(`Bearer ${secret}`)
+  // timingSafeEqual throws on a length mismatch, so check that first.
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected)
+}
+
+// ── Failure reporting ─────────────────────────────────────────────────────────
+
+/**
+ * Say so when the digest breaks.
+ *
+ * Without this a crash and a quiet day are the same thing from the user's
+ * phone: nothing arrives either way. Best-effort by design — it swallows its
+ * own errors so a failing notifier can never mask the failure it is reporting.
+ */
+async function reportFailure(stage, detail) {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  const chatId = process.env.TELEGRAM_CHAT_ID
+  if (!token || !chatId) return false
+  try {
+    await sendTelegram(token, chatId,
+`⚠️ <b>CRM digest failed</b>
+<i>${escapeHtml(stage)}</i>
+
+${escapeHtml(detail)}
+
+<i>No digest today — this is a failure, not a quiet day.</i>`)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  // Vercel Cron sends the CRON_SECRET as a bearer token. The same header works
-  // for a manual trigger, which is how you test without waiting for the cron.
-  const secret = process.env.CRON_SECRET
-  if (secret && (req.headers.authorization || '') !== `Bearer ${secret}`) {
+  if (!process.env.CRON_SECRET) {
+    // Deliberately not reported to Telegram: this branch is reachable by an
+    // unauthenticated caller, so alerting here would hand anyone a way to spam
+    // the chat from a public endpoint.
+    return res.status(500).json({ error: 'CRON_SECRET is not configured' })
+  }
+  if (!authorized(req)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
@@ -110,6 +159,8 @@ export default async function handler(req, res) {
     'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']
   const missing = required.filter((k) => !process.env[k])
   if (missing.length) {
+    // Past the auth gate, so this can only be the cron or the owner.
+    await reportFailure('configuration', `Missing env vars: ${missing.join(', ')}`)
     return res.status(500).json({ error: `Missing env vars: ${missing.join(', ')}` })
   }
 
@@ -178,6 +229,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ sent: true, today, messageId, counts, scanned })
   } catch (err) {
     console.error('daily-digest error:', err)
-    return res.status(500).json({ error: err.message })
+    // A preview is run by someone watching the response, so it needs no alert.
+    const notified = req.query?.preview ? false : await reportFailure('while building the digest', err.message)
+    return res.status(500).json({ error: err.message, notified })
   }
 }
