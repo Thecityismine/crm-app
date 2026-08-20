@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Phone, Mail, Users, FileText, MessageSquare, Plus, Loader, X } from 'lucide-react'
-import { getActivities, logActivity } from '@/lib/firebase/activities'
-import { updateContact } from '@/lib/firebase/contacts'
+import { getActivities } from '@/lib/firebase/activities'
+import { logContactActivity } from '@/lib/activityLog'
 import LogActivityModal from '@/components/activities/LogActivityModal'
 
 function ImageLightbox({ url, onClose }) {
@@ -46,6 +46,9 @@ const formatDate = (iso) => {
   if (isNaN(d.getTime())) return ''
   const now = new Date()
   const diffDays = Math.floor((now - d) / 86400000)
+  // A meeting can legitimately be logged for a future date; "-1 days ago" is
+  // not a thing. Anything ahead of now shows its date instead.
+  if (diffDays < 0) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   if (diffDays === 0) return 'Today'
   if (diffDays === 1) return 'Yesterday'
   if (diffDays < 7) return `${diffDays} days ago`
@@ -57,8 +60,6 @@ const formatDate = (iso) => {
 }
 
 // Types that update lastCommunication on the contact (notes count — they document an interaction)
-const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
-
 export default function ContactTimeline({ contact, onContactUpdated }) {
   const [activities,   setActivities]   = useState([])
   const [loading,      setLoading]      = useState(true)
@@ -81,13 +82,10 @@ export default function ContactTimeline({ contact, onContactUpdated }) {
   useEffect(() => { load() }, [load])
 
   const handleSave = async (data) => {
-    await logActivity(contact.id, data)
-
-    // Keep lastCommunication on the contact in sync
-    if (COMMUNICATION_TYPES.has(data.type)) {
-      await updateContact(contact.id, { lastCommunication: data.occurredAt })
-      onContactUpdated?.({ lastCommunication: data.occurredAt })
-    }
+    // Updates Firestore AND the shared store, so the dashboard and contact list
+    // don't keep showing the old lastCommunication.
+    const patch = await logContactActivity(contact.id, data)
+    if (patch) onContactUpdated?.(patch)
 
     // Optimistic prepend, then reload to get real server id
     setActivities((prev) => [{ id: '_tmp_' + Date.now(), ...data }, ...prev])

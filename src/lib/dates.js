@@ -56,3 +56,30 @@ export function isPastDate(value, from = startOfToday()) {
   const diff = daysFromToday(value, from)
   return diff !== null && diff < 0
 }
+
+const pad = (n) => String(n).padStart(2, '0')
+
+/**
+ * The calendar day a moment fell on, locally, as 'YYYY-MM-DD'.
+ *
+ * Not toISOString().slice(0, 10) — that is the UTC day. West of UTC an evening
+ * is already tomorrow there, so a 7pm call got recorded as happening the next
+ * day, and every "days since" built on it was off by one.
+ */
+export function toDateKey(value = new Date()) {
+  const d = value instanceof Date ? value : new Date(value)
+  if (isNaN(d.getTime())) return null
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/**
+ * Value for a `datetime-local` input, in local time.
+ *
+ * A datetime-local input reads whatever it is given as local time, so seeding
+ * it from toISOString() showed the wrong clock time — and saving that back
+ * shifted the stored instant by the offset, a full day for evening entries.
+ */
+export function toDateTimeValue(d = new Date()) {
+  const date = toDateKey(d)
+  return date && `${date}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}

@@ -9,6 +9,7 @@ import { useMemoryStore } from '@/store/memoryStore'
 import { uploadImage } from '@/lib/storage'
 import { geocodeLocation, reverseGeocode } from '@/lib/geocode'
 import { readPhotoMeta } from '@/lib/exif'
+import { toDateKey } from '@/lib/dates'
 import { MEMORY_KINDS } from '@/config/constants'
 import {
   createMemory, updateMemory, deleteMemory,
@@ -19,13 +20,6 @@ import {
 const PHOTO_MAX_SIDE = 2000
 const PHOTO_QUALITY = 0.85
 
-/** Today as YYYY-MM-DD in local time — never toISOString, which is UTC. */
-function todayLocal() {
-  const d = new Date()
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
 export default function MemoryModal({ memory, onClose }) {
   const isEdit = Boolean(memory)
   const { contacts } = useContactStore()
@@ -33,7 +27,7 @@ export default function MemoryModal({ memory, onClose }) {
 
   const [title, setTitle] = useState(memory?.title || '')
   const [story, setStory] = useState(memory?.story || '')
-  const [date, setDate] = useState(memory?.date || todayLocal())
+  const [date, setDate] = useState(memory?.date || toDateKey())
   const [kind, setKind] = useState(memory?.kind || 'personal')
   const [tags, setTags] = useState((memory?.tags || []).join(', '))
   const [archived, setArchived] = useState(Boolean(memory?.archived))

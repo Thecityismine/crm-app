@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useUIStore } from '@/store/uiStore'
 import { useContactStore } from '@/store/contactStore'
-import { logActivity } from '@/lib/firebase/activities'
-import { updateContact as apiUpdateContact, createContact } from '@/lib/firebase/contacts'
+import { createContact } from '@/lib/firebase/contacts'
+import { logContactActivity, localDateTimeValue } from '@/lib/activityLog'
 import { createDeal } from '@/lib/firebase/deals'
 import { createTask } from '@/lib/firebase/tasks'
 import { usePipelineConfig } from '@/lib/pipeline'
@@ -17,8 +17,7 @@ const ACTIVITY_TYPES = [
   { value: 'sms',     label: 'SMS',     Icon: MessageSquare },
 ]
 
-const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
-const todayISO = () => new Date().toISOString().slice(0, 16)
+const todayISO = localDateTimeValue
 
 // ── Shared contact combobox ───────────────────────────────────────────────────
 function ContactPicker({ contacts, value, onChange, placeholder = 'Search contacts...' }) {
@@ -109,7 +108,7 @@ function ErrorBanner({ message }) {
 
 // ── 1. Log Activity (global — with contact picker) ────────────────────────────
 function GlobalActivityModal({ onClose }) {
-  const { contacts, updateContact: storeUpdate } = useContactStore()
+  const { contacts } = useContactStore()
   const [contactId,  setContactId]  = useState('')
   const [type,       setType]       = useState('call')
   const [notes,      setNotes]      = useState('')
@@ -128,12 +127,7 @@ function GlobalActivityModal({ onClose }) {
         notes:      notes.trim(),
         occurredAt: new Date(occurredAt).toISOString(),
       }
-      await logActivity(contactId, data)
-      if (COMMUNICATION_TYPES.has(type)) {
-        const dateOnly = new Date(occurredAt).toISOString().slice(0, 10)
-        await apiUpdateContact(contactId, { lastCommunication: dateOnly })
-        storeUpdate(contactId, { lastCommunication: dateOnly })
-      }
+      await logContactActivity(contactId, data)
       onClose()
     } catch (err) {
       setError(err?.message ?? 'Failed to log activity.')

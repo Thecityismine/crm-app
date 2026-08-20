@@ -45,7 +45,7 @@ export default [
 
   // Vercel serverless functions and root build config run on Node, not in the browser.
   {
-    files: ['api/**/*.js', '*.config.js', 'eslint.config.js'],
+    files: ['api/**/*.js', '*.config.js', 'eslint.config.js', 'src/**/*.test.mjs'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

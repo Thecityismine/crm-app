@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useContacts } from '@/hooks/useContacts'
-import { useContactStore } from '@/store/contactStore'
-import { updateContact } from '@/lib/firebase/contacts'
-import { logActivity, getRecentActivities } from '@/lib/firebase/activities'
+import { getRecentActivities } from '@/lib/firebase/activities'
+import { logContactActivity } from '@/lib/activityLog'
 import { refreshContacts } from '@/hooks/useContacts'
 import { getTasks, updateTask } from '@/lib/firebase/tasks'
 import { getDeals } from '@/lib/firebase/deals'
@@ -180,14 +179,8 @@ export default function Dashboard() {
     getRecentActivities(8).then(setRecentActivities).catch(console.warn)
   }, [])
 
-  const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
-
   const handleLogSave = async (data) => {
-    await logActivity(loggingContact.id, data)
-    if (COMMUNICATION_TYPES.has(data.type)) {
-      await updateContact(loggingContact.id, { lastCommunication: data.occurredAt })
-      useContactStore.getState().updateContact(loggingContact.id, { lastCommunication: data.occurredAt })
-    }
+    await logContactActivity(loggingContact.id, data)
     refreshContacts()
     setLoggingContact(null)
   }

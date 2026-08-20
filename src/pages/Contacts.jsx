@@ -7,8 +7,8 @@ import ContactForm from '@/components/contacts/ContactForm'
 import ScanContactModal from '@/components/contacts/ScanContactModal'
 import CSVImportModal from '@/components/contacts/CSVImportModal'
 import LogActivityModal from '@/components/activities/LogActivityModal'
-import { createContact, updateContact } from '@/lib/firebase/contacts'
-import { logActivity } from '@/lib/firebase/activities'
+import { createContact } from '@/lib/firebase/contacts'
+import { logContactActivity } from '@/lib/activityLog'
 import { getHealthScore } from '@/lib/healthScore'
 import FilterControls from '@/components/filters/FilterControls'
 import { matchesFilters, optionsFromSettings, valuesFromField, hasActiveFilters } from '@/lib/filters'
@@ -91,8 +91,6 @@ const INFO_LABELS = {
   address: 'Has address',
   missing: 'Missing contact information',
 }
-const COMMUNICATION_TYPES = new Set(['call', 'email', 'meeting', 'sms', 'note'])
-
 export default function Contacts() {
   const { contacts } = useContacts()
   const relationshipOptions = useSettingsStore((s) => s.relationshipOptions)
@@ -123,11 +121,7 @@ export default function Contacts() {
   }
 
   const handleLogSave = async (data) => {
-    await logActivity(loggingContact.id, data)
-    if (COMMUNICATION_TYPES.has(data.type)) {
-      await updateContact(loggingContact.id, { lastCommunication: data.occurredAt })
-      useContactStore.getState().updateContact(loggingContact.id, { lastCommunication: data.occurredAt })
-    }
+    await logContactActivity(loggingContact.id, data)
     refreshContacts()
     setLoggingContact(null)
   }

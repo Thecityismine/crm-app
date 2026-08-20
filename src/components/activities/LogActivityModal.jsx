@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { resizeImage, uploadToStorage, safeFileName } from '@/lib/storage'
+import { localDateTimeValue } from '@/lib/activityLog'
 import Modal from '@/components/ui/Modal'
 import { Phone, Mail, Users, FileText, MessageSquare, AlertCircle, ImagePlus, X } from 'lucide-react'
 
@@ -11,7 +12,7 @@ const TYPES = [
   { value: 'sms',     label: 'SMS',     Icon: MessageSquare },
 ]
 
-const todayISO = () => new Date().toISOString().slice(0, 16)
+const todayISO = localDateTimeValue
 
 export default function LogActivityModal({ onClose, onSave }) {
   const [type,       setType]       = useState('call')
