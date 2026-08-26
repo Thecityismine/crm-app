@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, CheckSquare, ChevronDown } from 'lucide-react'
-import { getTasks, createTask, updateTask, deleteTask } from '@/lib/firebase/tasks'
 import { getDeals } from '@/lib/firebase/deals'
+import { useTasks } from '@/hooks/useTasks'
+import { addTask, patchTask, dropTask } from '@/lib/taskWrite'
 import { useContactStore } from '@/store/contactStore'
 import TaskItem from '@/components/tasks/TaskItem'
 
@@ -119,11 +120,13 @@ function AddTaskForm({ contacts, deals, onAdd, onCancel }) {
   const [dealId,      setDealId]      = useState('')
   const [description, setDescription] = useState('')
   const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!title.trim()) return
     setSaving(true)
+    setError('')
     const contact = contacts.find((c) => c.id === contactId)
     const deal    = deals.find((d) => d.id === dealId)
     try {
@@ -138,6 +141,10 @@ function AddTaskForm({ contacts, deals, onAdd, onCancel }) {
         description: description.trim() || null,
         status:      'open',
       })
+    } catch (err) {
+      // Without this the rejection was swallowed and the form just sat there,
+      // giving no hint that the task hadn't been saved.
+      setError(err?.message ?? 'Failed to add task.')
     } finally {
       setSaving(false)
     }
@@ -193,6 +200,10 @@ function AddTaskForm({ contacts, deals, onAdd, onCancel }) {
         onChange={(e) => setDescription(e.target.value)}
       />
 
+      {error && (
+        <p className="text-xs text-red-400">{error}</p>
+      )}
+
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={onCancel} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
         <button type="submit" disabled={saving} className="btn-primary text-xs px-3 py-1.5">
@@ -206,21 +217,16 @@ function AddTaskForm({ contacts, deals, onAdd, onCancel }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Tasks() {
   const { contacts } = useContactStore()
-  const [tasks,   setTasks]   = useState([])
+  // Shared store, not a private copy — the global "New Task" quick action writes
+  // into it, and this page has to see that without being remounted.
+  const { tasks, loading } = useTasks()
   const [deals,   setDeals]   = useState([])
-  const [loading, setLoading] = useState(true)
   const [filter,  setFilter]  = useState('open')
   const [groupBy, setGroupBy] = useState('none')
   const [showAdd, setShowAdd] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      getTasks().catch(() => []),
-      getDeals().catch(() => []),
-    ]).then(([t, d]) => {
-      setTasks(t)
-      setDeals(d)
-    }).finally(() => setLoading(false))
+    getDeals().then(setDeals).catch(() => setDeals([]))
   }, [])
 
   const filtered = useMemo(() => {
@@ -252,24 +258,20 @@ export default function Tasks() {
   const groups = useMemo(() => groupTasksBy(filtered, groupBy), [filtered, groupBy])
 
   const handleAdd = async (data) => {
-    const { id } = await createTask(data)
-    setTasks((prev) => [{ id, ...data }, ...prev])
+    await addTask(data)
     setShowAdd(false)
   }
 
+  // patchTask and dropTask update the store optimistically and put it back
+  // themselves if Firestore rejects the write, so there is nothing to undo here.
   const handleToggle = async (task) => {
     const newStatus = task.status === 'completed' ? 'open' : 'completed'
-    setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: newStatus } : t))
-    try {
-      await updateTask(task.id, { status: newStatus })
-    } catch {
-      setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: task.status } : t))
-    }
+    try { await patchTask(task.id, { status: newStatus }) }
+    catch (err) { console.warn('Task update failed:', err) }
   }
 
   const handleDelete = async (id) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id))
-    try { await deleteTask(id) } catch (err) { console.warn('Delete failed:', err) }
+    try { await dropTask(id) } catch (err) { console.warn('Delete failed:', err) }
   }
 
   return (

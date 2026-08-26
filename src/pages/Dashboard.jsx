@@ -4,7 +4,8 @@ import { useContacts } from '@/hooks/useContacts'
 import { getRecentActivities } from '@/lib/firebase/activities'
 import { logContactActivity } from '@/lib/activityLog'
 import { refreshContacts } from '@/hooks/useContacts'
-import { getTasks, updateTask } from '@/lib/firebase/tasks'
+import { useTasks } from '@/hooks/useTasks'
+import { patchTask } from '@/lib/taskWrite'
 import { getDeals } from '@/lib/firebase/deals'
 import { getHealthScore, getNeedsAttention } from '@/lib/healthScore'
 import { usePipelineConfig } from '@/lib/pipeline'
@@ -169,12 +170,12 @@ export default function Dashboard() {
   const highPriorityCount = allNeedsAttention.filter(c => c._health.score === 'cold').length
 
   const [loggingContact, setLoggingContact] = useState(null)
-  const [tasks, setTasks] = useState([])
+  // Shared store — a task added from the quick-action modal has to land here too.
+  const { tasks } = useTasks()
   const [deals, setDeals] = useState([])
   const [recentActivities, setRecentActivities] = useState([])
 
   useEffect(() => {
-    getTasks().then(setTasks).catch(console.warn)
     getDeals().then(setDeals).catch(console.warn)
     getRecentActivities(8).then(setRecentActivities).catch(console.warn)
   }, [])
@@ -221,8 +222,8 @@ export default function Dashboard() {
     .slice(0, 5)
 
   const handleCompleteTask = async (task) => {
-    setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: 'completed' } : t))
-    try { await updateTask(task.id, { status: 'completed' }) } catch { /* silent */ }
+    // patchTask updates the store first and reverts it if Firestore rejects.
+    try { await patchTask(task.id, { status: 'completed' }) } catch { /* silent */ }
   }
 
   return (

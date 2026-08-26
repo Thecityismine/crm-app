@@ -4,7 +4,7 @@ import { useContactStore } from '@/store/contactStore'
 import { createContact } from '@/lib/firebase/contacts'
 import { logContactActivity, localDateTimeValue } from '@/lib/activityLog'
 import { createDeal } from '@/lib/firebase/deals'
-import { createTask } from '@/lib/firebase/tasks'
+import { addTask } from '@/lib/taskWrite'
 import { usePipelineConfig } from '@/lib/pipeline'
 import Modal from '@/components/ui/Modal'
 import { Phone, Mail, Users, FileText, MessageSquare, AlertCircle, Search } from 'lucide-react'
@@ -367,7 +367,9 @@ function QuickAddTaskModal({ onClose }) {
     setError('')
     try {
       const contact = contacts.find((c) => c.id === contactId)
-      await createTask({
+      // addTask, not createTask — it updates the shared store too, so the task
+      // shows up on the tasks page and the dashboard without a refetch.
+      await addTask({
         title:       title.trim(),
         status:      'open',
         priority,
