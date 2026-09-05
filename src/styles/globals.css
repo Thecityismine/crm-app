@@ -39,6 +39,47 @@
   }
 }
 
+/* Date and time fields on iOS Safari.
+ *
+ * WebKit renders these as a native control that sizes and aligns itself: it
+ * centres its own value and holds an intrinsic minimum width, so `w-full` is
+ * ignored and the field runs past the right edge of every input beside it. On
+ * the task card that left the due date floating in the middle of a box wider
+ * than the priority and repeat pickers above it. Chromium does neither, which
+ * is why it only shows up on a phone.
+ *
+ * The value is a shadow-DOM child, so left-aligning the input does not reach
+ * it — it needs its own rule. */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  text-align: left;
+}
+
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value,
+input[type="month"]::-webkit-date-and-time-value {
+  text-align: left;
+  /* An empty field has nothing to give it height, and iOS collapses the row.
+     Holds it level with the filled ones. */
+  min-height: 1.25em;
+}
+
+/* Chromium keeps its calendar button through the appearance reset — it is the
+   only way to open the picker with a mouse. Tint it for a dark field. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
 /* iOS safe-area support */
 .bottom-nav-safe {
   padding-bottom: env(safe-area-inset-bottom);
