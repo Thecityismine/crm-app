@@ -5,6 +5,7 @@ import { createContact } from '@/lib/firebase/contacts'
 import { logContactActivity, localDateTimeValue } from '@/lib/activityLog'
 import { createDeal } from '@/lib/firebase/deals'
 import { addTask } from '@/lib/taskWrite'
+import { RECURRENCE_OPTIONS } from '@/lib/recurrence'
 import { usePipelineConfig } from '@/lib/pipeline'
 import Modal from '@/components/ui/Modal'
 import { Phone, Mail, Users, FileText, MessageSquare, AlertCircle, Search } from 'lucide-react'
@@ -356,6 +357,7 @@ function QuickAddTaskModal({ onClose }) {
   const [title,     setTitle]     = useState('')
   const [dueDate,   setDueDate]   = useState('')
   const [priority,  setPriority]  = useState('medium')
+  const [recurrence, setRecurrence] = useState('none')
   const [contactId, setContactId] = useState('')
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState('')
@@ -374,6 +376,7 @@ function QuickAddTaskModal({ onClose }) {
         status:      'open',
         priority,
         dueDate:     dueDate || null,
+        recurrence,
         contactId:   contactId || null,
         contactName: contact ? `${contact.firstName} ${contact.lastName}` : null,
       })
@@ -418,6 +421,12 @@ function QuickAddTaskModal({ onClose }) {
               onChange={(e) => setDueDate(e.target.value)}
             />
           </div>
+        </div>
+        <div>
+          <label className="label">Repeat</label>
+          <select className="input" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+            {RECURRENCE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
         </div>
         <div>
           <label className="label">Contact</label>

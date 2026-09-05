@@ -13,6 +13,7 @@
 
 import { createTask, updateTask, deleteTask } from '@/lib/firebase/tasks'
 import { useTaskStore } from '@/store/taskStore'
+import { isRecurring, nextDueDate } from '@/lib/recurrence'
 
 /**
  * Create a task and put it on screen everywhere at once.
@@ -45,6 +46,29 @@ export async function patchTask(id, patch) {
     }
     throw err
   }
+}
+
+/**
+ * Mark a task done, and open the next one if it repeats.
+ *
+ * The finished instance is kept rather than moved forward, so the Done tab is a
+ * record of what actually got done and not a single row that has been recycled
+ * all year. Only completion spawns — re-opening a task must not, or ticking a
+ * box twice would leave a stray copy behind every time.
+ *
+ * @returns the newly opened task, or null when nothing repeats.
+ */
+export async function completeTask(task) {
+  await patchTask(task.id, { status: 'completed' })
+  if (!isRecurring(task)) return null
+
+  const dueDate = nextDueDate(task.dueDate, task.recurrence)
+  if (!dueDate) return null
+
+  // Carry the task's own fields forward; drop what belongs to the instance that
+  // was just closed out.
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = task
+  return addTask({ ...rest, status: 'open', dueDate })
 }
 
 /** Delete a task, restoring the list in place if the delete fails. */

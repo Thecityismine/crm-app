@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { Plus, CheckSquare, ChevronDown } from 'lucide-react'
 import { getDeals } from '@/lib/firebase/deals'
 import { useTasks } from '@/hooks/useTasks'
-import { addTask, patchTask, dropTask } from '@/lib/taskWrite'
+import { addTask, patchTask, dropTask, completeTask } from '@/lib/taskWrite'
+import { RECURRENCE_OPTIONS } from '@/lib/recurrence'
 import { useContactStore } from '@/store/contactStore'
 import TaskItem from '@/components/tasks/TaskItem'
 
@@ -116,6 +117,7 @@ function AddTaskForm({ contacts, deals, onAdd, onCancel }) {
   const [title,       setTitle]       = useState('')
   const [priority,    setPriority]    = useState('medium')
   const [dueDate,     setDueDate]     = useState('')
+  const [recurrence,  setRecurrence]  = useState('none')
   const [contactId,   setContactId]   = useState('')
   const [dealId,      setDealId]      = useState('')
   const [description, setDescription] = useState('')
@@ -134,6 +136,7 @@ function AddTaskForm({ contacts, deals, onAdd, onCancel }) {
         title:       title.trim(),
         priority,
         dueDate:     dueDate || null,
+        recurrence,
         contactId:   contactId || null,
         contactName: contact ? `${contact.firstName} ${contact.lastName}` : null,
         dealId:      dealId || null,
@@ -172,6 +175,10 @@ function AddTaskForm({ contacts, deals, onAdd, onCancel }) {
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
         />
+
+        <select className="input text-xs flex-1 min-w-[130px]" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+          {RECURRENCE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
 
         <select className="input text-xs flex-1 min-w-[130px]" value={contactId} onChange={(e) => setContactId(e.target.value)}>
           <option value="">— No contact —</option>
@@ -264,10 +271,17 @@ export default function Tasks() {
 
   // patchTask and dropTask update the store optimistically and put it back
   // themselves if Firestore rejects the write, so there is nothing to undo here.
+  // completeTask also opens the next occurrence of a repeating task; re-opening
+  // one is a plain status change, so ticking a box twice leaves nothing behind.
   const handleToggle = async (task) => {
-    const newStatus = task.status === 'completed' ? 'open' : 'completed'
-    try { await patchTask(task.id, { status: newStatus }) }
-    catch (err) { console.warn('Task update failed:', err) }
+    try {
+      if (task.status === 'completed') await patchTask(task.id, { status: 'open' })
+      else                             await completeTask(task)
+    } catch (err) { console.warn('Task update failed:', err) }
+  }
+
+  const handleUpdate = async (id, patch) => {
+    await patchTask(id, patch)
   }
 
   const handleDelete = async (id) => {
@@ -372,7 +386,7 @@ export default function Tasks() {
       ) : groupBy === 'none' ? (
         <div className="card overflow-hidden">
           {filtered.map((task) => (
-            <TaskItem key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} />
+            <TaskItem key={task.id} task={task} contacts={contacts} deals={deals} onToggle={handleToggle} onDelete={handleDelete} onUpdate={handleUpdate} />
           ))}
         </div>
       ) : (
@@ -386,7 +400,7 @@ export default function Tasks() {
                 </div>
               )}
               {groupTasks.map((task) => (
-                <TaskItem key={task.id} task={task} onToggle={handleToggle} onDelete={handleDelete} />
+                <TaskItem key={task.id} task={task} contacts={contacts} deals={deals} onToggle={handleToggle} onDelete={handleDelete} onUpdate={handleUpdate} />
               ))}
             </div>
           ))}
